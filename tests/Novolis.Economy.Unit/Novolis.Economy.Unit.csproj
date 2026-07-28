@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Novolis.Economy/Novolis.Economy.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Core/Novolis.Economy.Core.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Production/Novolis.Economy.Production.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />

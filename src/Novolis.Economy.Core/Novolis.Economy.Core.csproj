@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Core</PackageId>
+    <IsPackable>true</IsPackable>
+    <RootNamespace>Novolis.Economy.Core</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Document surface in README/SPEC; enum/member XML can land incrementally. -->
+    <NoWarn>$(NoWarn);CS1591;CS1587</NoWarn>
+    <Description>
+      Bounded-minimum economic model: immutable EconomyState, ordered IEconomyStep pipeline.
+      Self-contained stock–flow aggregate; not yet woven into Simulation / Logistics.
+    </Description>
+  </PropertyGroup>
+</Project>
+

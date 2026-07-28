@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Novolis.Economy/Novolis.Economy.csproj" />
+    <Project Path="src/Novolis.Economy.Core/Novolis.Economy.Core.csproj" />
     <Project Path="src/Novolis.Economy.Production/Novolis.Economy.Production.csproj" />
     <Project Path="src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj" />
     <Project Path="src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />

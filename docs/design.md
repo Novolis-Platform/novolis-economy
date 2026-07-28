@@ -16,6 +16,8 @@ This repo must **not** reference `Novolis.Simulation.*`, Raylib, or product host
 ```text
 Novolis.Economy                 PRIMITIVES — IDs, values, time, LegalEntity, OwnershipClaim,
                                 markers, RNG, shared commands/events  (PackageId: Novolis.Economy)
+Novolis.Economy.Core            bounded-minimum EconomyState + IEconomyStep pipeline
+                                (self-contained; weave into Simulation/Logistics deferred)
 Novolis.Economy.Production      recipes, batches, inventory store, production engine
 Novolis.Economy.Markets         market estimates / observed trade book
 Novolis.Economy.Accounting      ledger, invoices, ownership engine (claim DTO in Primitives)
@@ -27,6 +29,8 @@ Novolis.Economy.Simulation      composition root: EconomyWorld, phase pipeline (
 ```
 
 `Novolis.Economy` is the **Primitives** leaf: domain packages and Simulation depend on it. Simulation holds `Entities` / `OwnershipClaims` dictionaries/lists but does not define those types.
+
+`Novolis.Economy.Core` is a self-contained rigorous aggregate-state experiment (regions, cohorts, activities, holdings, transfers, shares, loans + ordered steps). It does **not** reference other Economy packages yet; Logistics/Simulation remain the operational encoding until a deliberate weave.
 
 ## World model
 
