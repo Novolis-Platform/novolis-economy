@@ -228,7 +228,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     }
 
     TopUpFuelAt(context, site);
-    if (_policy.AllowFuelProcurement && fuel < 2m)
+    if (_policy.AllowFuelProcurement)
     {
       context.Enqueue(new PlaceProcurementOrder(
         FirmId, site.LocationId, _policy.FuelProduct, Quantity.From(8m),
