@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Population</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Consumer cohort and preference stubs for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Population</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+  </ItemGroup>
+</Project>

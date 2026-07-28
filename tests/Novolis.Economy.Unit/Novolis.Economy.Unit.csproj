@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Novolis.Economy.Unit</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Novolis.Economy/Novolis.Economy.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Production/Novolis.Economy.Production.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Logistics/Novolis.Economy.Logistics.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Population/Novolis.Economy.Population.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Logistics</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Shipment, freight route, and inventory location stubs for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Logistics</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+  </ItemGroup>
+</Project>

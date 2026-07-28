@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Accounting</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Ledger and period-close stubs for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Accounting</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+  </ItemGroup>
+</Project>

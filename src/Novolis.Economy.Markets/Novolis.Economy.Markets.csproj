@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Markets</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Market estimate and imperfect-information stubs for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Markets</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+  </ItemGroup>
+</Project>

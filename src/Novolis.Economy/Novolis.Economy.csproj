@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Core primitives, strong IDs, and command/event/projection markers for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

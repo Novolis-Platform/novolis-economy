@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Simulation</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Deterministic economic tick runner and ordered simulation phases for Novolis.</Description>
+    <RootNamespace>Novolis.Economy.Simulation</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Markets\Novolis.Economy.Markets.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Accounting\Novolis.Economy.Accounting.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Logistics\Novolis.Economy.Logistics.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Population\Novolis.Economy.Population.csproj" />
+  </ItemGroup>
+</Project>

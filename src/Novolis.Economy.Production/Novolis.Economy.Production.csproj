@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Production</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Product definitions, batches, and facility layout stubs for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Production</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+  </ItemGroup>
+</Project>

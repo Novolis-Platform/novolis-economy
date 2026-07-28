@@ -1,0 +1,69 @@
+{
+  "packages": {
+    "Novolis.Economy": {
+      "paths": [
+        "src/Novolis.Economy/**",
+        "tests/Novolis.Economy.Unit/Core/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy/Novolis.Economy.csproj"
+    },
+    "Novolis.Economy.Production": {
+      "paths": [
+        "src/Novolis.Economy.Production/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Production/Novolis.Economy.Production.csproj"
+    },
+    "Novolis.Economy.Markets": {
+      "paths": [
+        "src/Novolis.Economy.Markets/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj"
+    },
+    "Novolis.Economy.Accounting": {
+      "paths": [
+        "src/Novolis.Economy.Accounting/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj"
+    },
+    "Novolis.Economy.Logistics": {
+      "paths": [
+        "src/Novolis.Economy.Logistics/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Logistics/Novolis.Economy.Logistics.csproj"
+    },
+    "Novolis.Economy.Population": {
+      "paths": [
+        "src/Novolis.Economy.Population/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Population/Novolis.Economy.Population.csproj"
+    },
+    "Novolis.Economy.Simulation": {
+      "paths": [
+        "src/Novolis.Economy.Simulation/**",
+        "tests/Novolis.Economy.Unit/Simulation/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj"
+    }
+  }
+}
