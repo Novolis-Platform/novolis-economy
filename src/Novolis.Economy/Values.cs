@@ -22,6 +22,18 @@ public readonly record struct Money(decimal Amount) : IComparable<Money>
   /// <summary>Multiplies money by a scalar.</summary>
   public static Money operator *(Money left, decimal scalar) => new(left.Amount * scalar);
 
+  /// <summary>Less-than comparison.</summary>
+  public static bool operator <(Money left, Money right) => left.Amount < right.Amount;
+
+  /// <summary>Greater-than comparison.</summary>
+  public static bool operator >(Money left, Money right) => left.Amount > right.Amount;
+
+  /// <summary>Less-or-equal comparison.</summary>
+  public static bool operator <=(Money left, Money right) => left.Amount <= right.Amount;
+
+  /// <summary>Greater-or-equal comparison.</summary>
+  public static bool operator >=(Money left, Money right) => left.Amount >= right.Amount;
+
   /// <inheritdoc />
   public override string ToString() => Amount.ToString("0.####");
 }
@@ -44,6 +56,21 @@ public readonly record struct Quantity(decimal Value) : IComparable<Quantity>
 
   /// <summary>Subtracts quantities.</summary>
   public static Quantity operator -(Quantity left, Quantity right) => new(left.Value - right.Value);
+
+  /// <summary>Multiplies quantity by a scalar.</summary>
+  public static Quantity operator *(Quantity left, decimal scalar) => new(left.Value * scalar);
+
+  /// <summary>Less-than comparison.</summary>
+  public static bool operator <(Quantity left, Quantity right) => left.Value < right.Value;
+
+  /// <summary>Greater-than comparison.</summary>
+  public static bool operator >(Quantity left, Quantity right) => left.Value > right.Value;
+
+  /// <summary>Less-or-equal comparison.</summary>
+  public static bool operator <=(Quantity left, Quantity right) => left.Value <= right.Value;
+
+  /// <summary>Greater-or-equal comparison.</summary>
+  public static bool operator >=(Quantity left, Quantity right) => left.Value >= right.Value;
 
   /// <inheritdoc />
   public override string ToString() => Value.ToString("0.####");

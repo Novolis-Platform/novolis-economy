@@ -1,23 +1,25 @@
-# Concept (skeleton scope)
+# Concept
 
-Working title for a future product: **Novolis Commerce**. Reusable simulation packages live here as `Novolis.Economy.*`.
+Working title for a future product: **Novolis Commerce** (Capitalism Plus–style economic simulation). Reusable packages live here as `Novolis.Economy.*`.
 
 ## Proposition
 
-A business simulation where displayed numbers trace to economic processes (procurement, production, logistics, cohort demand, accounting)—not opaque multipliers.
+A business simulation where displayed numbers trace to economic processes—procurement, production, logistics, cohort demand, double-entry accounting—not opaque multipliers or gamification meters.
 
 ## This repository
 
-Platform library family only:
+Platform library family:
 
 - Headless, deterministic, UI-independent
-- Ordered simulation phases
+- `EconomyWorld` + ordered hourly phases
 - Commands / events / projections
-- Domain stubs for production, markets, accounting, logistics, population
+- Domain engines for production, logistics, demand, ledgers, and market observation
+
+Vocabulary is **generic commerce** (firms, facilities, products, invoices, cohorts). Content packs (food chains, etc.) belong at the product layer.
 
 ## Deferred
 
-- Food vertical-slice algorithms (wheat → bread)
-- AI firm controllers
+- AI firm controllers / strategies
 - Commerce game host / Avalonia UI
 - Platform workspace and snapshot integration
+- Credit markets, bankruptcy, rich P&amp;L statements

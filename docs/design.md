@@ -14,44 +14,58 @@ This repo must **not** reference `Novolis.Simulation.*`, Raylib, or product host
 ## Package split
 
 ```text
-Novolis.Economy                 primitives, IDs, markers, RNG
-Novolis.Economy.Production      recipes, batches, facility layout stubs
-Novolis.Economy.Markets         market estimates / intelligence stubs
-Novolis.Economy.Accounting      ledger stubs
-Novolis.Economy.Logistics       shipments and routes stubs
-Novolis.Economy.Population      consumer cohorts stubs
-Novolis.Economy.Simulation      phase pipeline and IEconomySimulation
+Novolis.Economy                 primitives, IDs, markers, RNG, commands/events
+Novolis.Economy.Production      recipes, batches, inventory store, production engine
+Novolis.Economy.Markets         market estimates / observed trade book
+Novolis.Economy.Accounting      ledger, invoices, double-entry posting
+Novolis.Economy.Logistics       freight routes, active shipments, logistics engine
+Novolis.Economy.Population      cohorts, preference-weighted demand engine
+Novolis.Economy.Simulation      EconomyWorld, phase pipeline, IEconomySimulation
 ```
 
-Domain packages depend only on `Novolis.Economy`. `Novolis.Economy.Simulation` references all domain packages so the tick runner can host phases that will later call into them.
+## World model
+
+`SimulationState.World` (`EconomyWorld`) holds:
+
+- Product catalog and facility layouts
+- Firm ledgers (cash, inventory, revenue, COGS, wages, equity)
+- FIFO inventory lots by `(firm, location, product)`
+- Posted retail prices and production plans
+- Freight routes / in-flight shipments
+- Consumer cohorts with period budgets
+- Observed market trade book
+
+Seed worlds with `EconomyWorldBuilder` (deterministic ids via fixed guids).
 
 ## Commands, events, projections
 
-- **Commands** (`IEconomyCommand`) — decisions (player or AI)
-- **Events** (`IEconomyEvent`) — what occurred (diagnostics, replay, reporting)
-- **Projections** (`IEconomyProjection`) — read models for UI queries
+- **Commands** — decisions (`SetRetailPrice`, `SetProductionPlan`, `PlaceProcurementOrder`, `IssueShipment`, `SetAvailableLabor`, …)
+- **Events** — what occurred (`BatchProduced`, `GoodsSold`, `ShipmentDelivered`, …)
+- **Projections** — read models (`ProductMarketView`)
 
-Persistence is **periodic full snapshots**, not full event sourcing. Events are retained for explainability and short-horizon replay.
+Persistence intent remains **periodic full snapshots**, not full event sourcing.
 
 ## Simulation phases
 
-Ordered phases run every economic hour:
+Ordered phases run every economic hour and mutate the world:
 
 1. Apply decisions
-2. Allocate labor
-3. Acquire inputs
+2. Allocate labor (+ wage accrual)
+3. Acquire inputs (exogenous procurement + dispatch requests)
 4. Transport inventory
-5. Run production
-6. Restock retail
-7. Resolve consumer purchases
+5. Run production (+ optional spoilage)
+6. Restock retail (auto-ship storage → retail)
+7. Resolve consumer purchases (posted-price, stock-constrained)
 8. Settle invoices and wages
-9. Apply research progress
-10. Update expectations and market knowledge
-11. Close accounting period (when due)
+9. Apply research progress (productivity coefficient)
+10. Update expectations (market book ready)
+11. Close accounting period (budget reset)
 12. Emit observations
-
-Skeleton phases are record-only (diagnostic events). Algorithms land in a later vertical slice.
 
 ## Determinism
 
-Identical seed + identical command stream must produce identical `SimulationState.Hash` after the same number of ticks.
+Identical seed + identical command stream + identical initial world must produce identical `SimulationState.Hash` after the same number of ticks. Hash covers clock, RNG, event count, and a world fingerprint (cash/inventory/prices/shipments/cohort budgets).
+
+## Non-goals
+
+UI/host, AI firm controllers, gamification (XP, morale meters), soft loans/bankruptcy drama, full general-equilibrium solvers.

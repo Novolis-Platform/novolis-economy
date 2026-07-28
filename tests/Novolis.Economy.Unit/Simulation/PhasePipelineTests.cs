@@ -22,7 +22,6 @@ public sealed class PhasePipelineTests
     var result = await sim.AdvanceAsync(SimulationDuration.OneHour);
     await Assert.That(result.HoursAdvanced).IsEqualTo(1);
     await Assert.That(sim.State.LastTickPhases.Count).IsEqualTo(12);
-    await Assert.That(result.EventsEmitted).IsEqualTo(12);
     await Assert.That(sim.State.Clock.HourIndex).IsEqualTo(1);
   }
 
@@ -38,12 +37,18 @@ public sealed class PhasePipelineTests
   }
 
   [Test]
-  public async Task EnqueuedCommand_IsConsumedOnApplyDecisions()
+  public async Task EnqueuedSetRetailPrice_IsApplied()
   {
     var sim = new EconomySimulation(seed: 9);
-    sim.Enqueue(new SetRetailPrice(FirmId.New(), FacilityId.New(), ProductId.New(), Money.From(4.5m)));
+    var firm = FirmId.From(Guid.Parse("00000000-0000-4000-8000-000000000010"));
+    var facility = FacilityId.From(Guid.Parse("00000000-0000-4000-8000-000000000011"));
+    var product = ProductId.From(Guid.Parse("00000000-0000-4000-8000-000000000012"));
+    sim.State.World.EnsureFirm(firm, "Test");
+    sim.Enqueue(new SetRetailPrice(firm, facility, product, Money.From(4.5m)));
     await Assert.That(sim.State.PendingCommands.Count).IsEqualTo(1);
     await sim.AdvanceAsync(SimulationDuration.OneHour);
     await Assert.That(sim.State.PendingCommands.Count).IsEqualTo(0);
+    await Assert.That(sim.State.World.RetailPrices[(firm, facility, product)].Amount).IsEqualTo(4.5m);
+    await Assert.That(sim.State.Events.OfType<RetailPriceChanged>().Count()).IsEqualTo(1);
   }
 }

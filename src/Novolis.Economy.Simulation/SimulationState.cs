@@ -11,10 +11,18 @@ public sealed class SimulationState
   private readonly List<SimulationPhaseOrder> _lastTickPhases = [];
   private ulong _lastRngState;
 
-  /// <summary>Creates state at epoch with the given seed.</summary>
+  /// <summary>Creates state at epoch with the given seed and an empty world.</summary>
   public SimulationState(ulong seed)
+    : this(seed, new EconomyWorld())
   {
+  }
+
+  /// <summary>Creates state at epoch with the given seed and world.</summary>
+  public SimulationState(ulong seed, EconomyWorld world)
+  {
+    ArgumentNullException.ThrowIfNull(world);
     Seed = seed;
+    World = world;
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
     RecomputeHash();
@@ -22,6 +30,9 @@ public sealed class SimulationState
 
   /// <summary>Initial RNG seed.</summary>
   public ulong Seed { get; }
+
+  /// <summary>Economic world.</summary>
+  public EconomyWorld World { get; }
 
   /// <summary>Current simulation hour.</summary>
   public SimulationHour Clock { get; private set; }
@@ -35,7 +46,7 @@ public sealed class SimulationState
   /// <summary>Phases that ran during the most recent tick (for tests).</summary>
   public IReadOnlyList<SimulationPhaseOrder> LastTickPhases => _lastTickPhases;
 
-  /// <summary>Deterministic fingerprint of clock, seed, event count, and RNG state.</summary>
+  /// <summary>Deterministic fingerprint of clock, world, and RNG.</summary>
   public ulong Hash { get; private set; }
 
   /// <summary>Enqueues a command for the next ApplyDecisions phase.</summary>
@@ -79,7 +90,6 @@ public sealed class SimulationState
 
   private void RecomputeHash()
   {
-    // FNV-1a 64-bit over seed, clock, pending count, event count, and RNG state.
     const ulong offset = 14695981039346656037UL;
     const ulong prime = 1099511628211UL;
     var hash = offset;
@@ -88,6 +98,7 @@ public sealed class SimulationState
     hash = (hash ^ (ulong)_pendingCommands.Count) * prime;
     hash = (hash ^ (ulong)_events.Count) * prime;
     hash = (hash ^ _lastRngState) * prime;
+    hash = (hash ^ World.Fingerprint()) * prime;
     Hash = hash;
   }
 }

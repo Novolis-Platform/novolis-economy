@@ -2,39 +2,6 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Logistics;
 
-/// <summary>Identifies an inventory location (warehouse bin, vehicle, store shelf).</summary>
-/// <param name="Value">Opaque location key.</param>
-public readonly record struct InventoryLocationId(Guid Value)
-{
-  /// <summary>Creates a new location id.</summary>
-  public static InventoryLocationId New() => new(Guid.NewGuid());
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Identifies a shipment in transit.</summary>
-/// <param name="Value">Opaque shipment key.</param>
-public readonly record struct ShipmentId(Guid Value)
-{
-  /// <summary>Creates a new shipment id.</summary>
-  public static ShipmentId New() => new(Guid.NewGuid());
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Identifies a freight route.</summary>
-/// <param name="Value">Opaque route key.</param>
-public readonly record struct FreightRouteId(Guid Value)
-{
-  /// <summary>Creates a new route id.</summary>
-  public static FreightRouteId New() => new(Guid.NewGuid());
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
 /// <summary>Defined path between inventory locations.</summary>
 /// <param name="Id">Route id.</param>
 /// <param name="Origin">Origin location.</param>
@@ -61,14 +28,7 @@ public enum ShipmentStatus
   Cancelled = 3,
 }
 
-/// <summary>Physical goods movement between locations.</summary>
-/// <param name="Id">Shipment id.</param>
-/// <param name="RouteId">Route used.</param>
-/// <param name="ProductId">Product moved.</param>
-/// <param name="Quantity">Quantity moved.</param>
-/// <param name="DepartedAt">Departure hour.</param>
-/// <param name="ExpectedArrival">Expected arrival hour.</param>
-/// <param name="Status">Current status.</param>
+/// <summary>Physical goods movement between locations (immutable snapshot).</summary>
 public sealed record Shipment(
   ShipmentId Id,
   FreightRouteId RouteId,
@@ -77,3 +37,56 @@ public sealed record Shipment(
   SimulationHour DepartedAt,
   SimulationHour ExpectedArrival,
   ShipmentStatus Status);
+
+/// <summary>Mutable in-flight shipment used by the logistics engine.</summary>
+public sealed class ActiveShipment
+{
+  /// <summary>Creates an active shipment.</summary>
+  public ActiveShipment(
+    ShipmentId id,
+    FirmId firmId,
+    FreightRouteId routeId,
+    ProductId productId,
+    Quantity quantity,
+    Money unitCost,
+    long hoursRemaining,
+    SimulationHour departedAt)
+  {
+    Id = id;
+    FirmId = firmId;
+    RouteId = routeId;
+    ProductId = productId;
+    Quantity = quantity;
+    UnitCost = unitCost;
+    HoursRemaining = hoursRemaining;
+    DepartedAt = departedAt;
+    Status = ShipmentStatus.InTransit;
+  }
+
+  /// <summary>Shipment id.</summary>
+  public ShipmentId Id { get; }
+
+  /// <summary>Owning firm.</summary>
+  public FirmId FirmId { get; }
+
+  /// <summary>Route.</summary>
+  public FreightRouteId RouteId { get; }
+
+  /// <summary>Product.</summary>
+  public ProductId ProductId { get; }
+
+  /// <summary>Quantity.</summary>
+  public Quantity Quantity { get; }
+
+  /// <summary>Carrying unit cost.</summary>
+  public Money UnitCost { get; }
+
+  /// <summary>Hours left until delivery.</summary>
+  public long HoursRemaining { get; set; }
+
+  /// <summary>Departure hour.</summary>
+  public SimulationHour DepartedAt { get; }
+
+  /// <summary>Status.</summary>
+  public ShipmentStatus Status { get; set; }
+}

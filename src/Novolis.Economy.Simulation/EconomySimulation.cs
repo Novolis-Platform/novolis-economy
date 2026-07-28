@@ -2,21 +2,6 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Simulation;
 
-/// <summary>Headless economic simulation entry point.</summary>
-public interface IEconomySimulation
-{
-  /// <summary>Current mutable state.</summary>
-  SimulationState State { get; }
-
-  /// <summary>Enqueues a command for a future tick.</summary>
-  void Enqueue(IEconomyCommand command);
-
-  /// <summary>Advances the simulation by the given duration.</summary>
-  ValueTask<SimulationResult> AdvanceAsync(
-    SimulationDuration duration,
-    CancellationToken cancellationToken = default);
-}
-
 /// <summary>Default deterministic economy simulation.</summary>
 public sealed class EconomySimulation : IEconomySimulation
 {
@@ -24,17 +9,30 @@ public sealed class EconomySimulation : IEconomySimulation
   private readonly DeterministicRandom _random;
   private readonly SimulationContext _context;
 
-  /// <summary>Creates a simulation with the default phase pipeline.</summary>
+  /// <summary>Creates a simulation with an empty world.</summary>
   public EconomySimulation(ulong seed)
-    : this(seed, PhasePipeline.CreateDefault())
+    : this(seed, new EconomyWorld(), PhasePipeline.CreateDefault())
+  {
+  }
+
+  /// <summary>Creates a simulation with a prepared world.</summary>
+  public EconomySimulation(ulong seed, EconomyWorld world)
+    : this(seed, world, PhasePipeline.CreateDefault())
   {
   }
 
   /// <summary>Creates a simulation with a custom pipeline (tests).</summary>
   public EconomySimulation(ulong seed, PhasePipeline pipeline)
+    : this(seed, new EconomyWorld(), pipeline)
   {
+  }
+
+  /// <summary>Creates a simulation with world and pipeline.</summary>
+  public EconomySimulation(ulong seed, EconomyWorld world, PhasePipeline pipeline)
+  {
+    ArgumentNullException.ThrowIfNull(world);
     ArgumentNullException.ThrowIfNull(pipeline);
-    State = new SimulationState(seed);
+    State = new SimulationState(seed, world);
     _pipeline = pipeline;
     _random = new DeterministicRandom(seed);
     _context = new SimulationContext(State, _random);
@@ -66,4 +64,19 @@ public sealed class EconomySimulation : IEconomySimulation
       State.Events.Count - eventsBefore,
       State.Hash);
   }
+}
+
+/// <summary>Headless economic simulation entry point.</summary>
+public interface IEconomySimulation
+{
+  /// <summary>Current mutable state.</summary>
+  SimulationState State { get; }
+
+  /// <summary>Enqueues a command for a future tick.</summary>
+  void Enqueue(IEconomyCommand command);
+
+  /// <summary>Advances the simulation by the given duration.</summary>
+  ValueTask<SimulationResult> AdvanceAsync(
+    SimulationDuration duration,
+    CancellationToken cancellationToken = default);
 }
