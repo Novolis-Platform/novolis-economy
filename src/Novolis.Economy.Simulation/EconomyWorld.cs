@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
+using Novolis.Economy.Core;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Markets;
 using Novolis.Economy.Population;
@@ -228,6 +229,15 @@ public sealed class EconomyWorld
   /// <summary>Market book.</summary>
   public ObservedMarketBook MarketBook { get; } = new();
 
+  /// <summary>
+  /// Core bounded-minimum aggregate (economic authority). Replaced immutably on period Advance
+  /// and when Logistics deliveries credit holdings.
+  /// </summary>
+  public EconomyState CoreState { get; set; } = EconomyState.Empty;
+
+  /// <summary>Ops hub → Core region map (carriage destination).</summary>
+  public Dictionary<TransportHubId, RegionId> HubRegions { get; } = new();
+
   /// <summary>Default geographic area for market estimates.</summary>
   public GeographicAreaId DefaultArea { get; set; } = GeographicAreaId.From(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
 
@@ -283,7 +293,7 @@ public sealed class EconomyWorld
   public int UsedLivingHouseholds(GeographicAreaId area) =>
     Cohorts
       .Where(c => c.Definition.Area.Equals(area))
-      .Sum(c => HouseholdMath.Count(c.Definition.Population));
+      .Sum(c => Population.HouseholdMath.Count(c.Definition.Population));
 
   /// <summary>Mfg/assembly facilities in an area.</summary>
   public int UsedProductionSlots(GeographicAreaId area) =>
@@ -303,7 +313,7 @@ public sealed class EconomyWorld
 
   /// <summary>Comfort floor for a cohort under current policy.</summary>
   public Money ComfortFloor(CohortState cohort) =>
-    HouseholdMath.ComfortFloor(
+    Population.HouseholdMath.ComfortFloor(
       cohort.Definition.Population,
       Policy.HouseholdComfortThresholdPerHousehold);
 

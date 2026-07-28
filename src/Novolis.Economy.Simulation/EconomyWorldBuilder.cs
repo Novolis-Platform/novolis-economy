@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
+using Novolis.Economy.Core;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Population;
 using Novolis.Economy.Production;
@@ -113,6 +114,15 @@ public sealed class EconomyWorldBuilder
   public EconomyWorldBuilder AddHub(TransportHub hub)
   {
     _world.Hubs[hub.Id] = hub;
+    CoreEconomyBridge.BindHubRegion(_world, hub.Id);
+    return this;
+  }
+
+  /// <summary>Adds a transport hub bound to an explicit Core region.</summary>
+  public EconomyWorldBuilder AddHub(TransportHub hub, RegionId regionId)
+  {
+    _world.Hubs[hub.Id] = hub;
+    CoreEconomyBridge.BindHubRegion(_world, hub.Id, regionId);
     return this;
   }
 
@@ -153,14 +163,14 @@ public sealed class EconomyWorldBuilder
     {
       var used = _world.UsedLivingHouseholds(cohort.Area);
       var remaining = Math.Max(0, region.LivingCapacityHouseholds - used);
-      var want = HouseholdMath.Count(households);
+      var want = Population.HouseholdMath.Count(households);
       if (want > remaining)
       {
         households = new PopulationCount(remaining);
       }
     }
 
-    if (HouseholdMath.Count(households) <= 0)
+    if (Population.HouseholdMath.Count(households) <= 0)
     {
       return this;
     }

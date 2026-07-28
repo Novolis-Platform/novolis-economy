@@ -3,7 +3,7 @@
 Bounded-minimum (BM) economic model: immutable `EconomyState`, ordered `IEconomyStep` fold, stock–flow discipline.
 PackageId: `Novolis.Economy.Core` (`2026.1.*` on GitHub Packages). Normative types and rules: [`SPEC.md`](SPEC.md).
 
-This package is self-contained. It does **not** yet weave into `Novolis.Economy` Simulation, Logistics, or NearSol. Mapping notes below anticipate that weave.
+This package is the **economic kernel**. Ops packages (`Production`, `Logistics`, `Simulation`, …) depend on it. Hour ticks advance carriage only; Core’s 16-step pipeline settles at period boundaries via `EconomyWorld.CoreState` / `CoreEconomyBridge`.
 
 ---
 
@@ -35,7 +35,7 @@ ShareHolding ──units of──► ShareClass(Issuer)
 ResourceTransfer ──carriage──► (ownership preserved unless a sale)
 ```
 
-**Future weave:** Core `RegionId` ≈ Simulation / Astro hub / `GeographicAreaId`; Core `ResourceTransfer` ≈ Logistics shipment *meaning* (not vehicle ops).
+**Ops weave:** Core `RegionId` ≈ hub / `GeographicAreaId`; deliveries credit Core holdings via `CoreEconomyBridge`. PackageId `Novolis.Economy` (primitives) is retired.
 
 ---
 

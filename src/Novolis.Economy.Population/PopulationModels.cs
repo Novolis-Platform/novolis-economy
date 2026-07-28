@@ -34,7 +34,7 @@ public sealed record PreferenceProfile(
 /// <param name="Preferences">Preference profile.</param>
 /// <param name="Area">Home geographic area (habitat/region).</param>
 /// <param name="Productivity">Productive hours setting (12/18/24 per household-day).</param>
-/// <param name="HouseholdFirmId">Linked <see cref="LegalEntityKind.Household"/> party id.</param>
+/// <param name="HouseholdFirmId">Linked household legal-entity party id.</param>
 public sealed record ConsumerCohort(
   ConsumerCohortId Id,
   PopulationCount Population,

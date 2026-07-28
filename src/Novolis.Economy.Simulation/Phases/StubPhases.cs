@@ -926,6 +926,8 @@ public sealed class TransportInventoryPhase : ISimulationPhase
       context.State.AppendEvent(new InventoryTransferred(
         hour, shipment.FirmId, shipment.ProductId, shipment.Quantity, "shipment-delivery"));
 
+      CoreEconomyBridge.ApplyDelivery(world, shipment);
+
       if (!shipment.IsLegacy)
       {
         world.TransportStats.CargoDelivered = Quantity.From(
@@ -1383,6 +1385,9 @@ public sealed class CloseAccountingPeriodPhase : ISimulationPhase
     {
       return ValueTask.CompletedTask;
     }
+
+    // Core period settle — economic authority advances once per PeriodHours.
+    CoreEconomyBridge.AdvancePeriod(world);
 
     foreach (var firmId in world.Firms.Keys.OrderBy(id => id.Value))
     {

@@ -2,12 +2,12 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Simulation</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Deterministic economic tick runner and ordered phases. Holds LegalEntity/OwnershipClaim collections; those types are defined in Novolis.Economy primitives.</Description>
+    <Description>Deterministic economic tick runner: hour ops phases + period-boundary Core Advance. Holds ops LegalEntity collections and Core EconomyState.</Description>
     <RootNamespace>Novolis.Economy.Simulation</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Markets\Novolis.Economy.Markets.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Accounting\Novolis.Economy.Accounting.csproj" />

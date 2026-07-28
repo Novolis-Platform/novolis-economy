@@ -7,6 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
   </ItemGroup>
 </Project>

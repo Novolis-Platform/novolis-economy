@@ -2,12 +2,13 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Logistics</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Hub/corridor transport network, itinerary planning, and multi-leg shipments. Transport hub/corridor/vehicle IDs live in Novolis.Economy primitives.</Description>
+    <Description>Hub/corridor transport network, itinerary planning, and multi-leg shipments scheduled against Core transfers.</Description>
     <RootNamespace>Novolis.Economy.Logistics</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
   </ItemGroup>
 </Project>

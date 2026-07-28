@@ -11,26 +11,50 @@
 
 This repo must **not** reference `Novolis.Simulation.*`, Raylib, or product hosts. Future `novolis-commerce` consumes Economy via NuGet and may compose snapshots from `novolis-workspaces` at the product layer.
 
-## Package split
+## Package split (Core pivot)
+
+**PackageId `Novolis.Economy` is retired.** Economic authority is [`Novolis.Economy.Core`](../src/Novolis.Economy.Core/). Ops packages depend on Core; ops-only types live in the packages that use them (not Core).
 
 ```text
-Novolis.Economy                 PRIMITIVES — IDs, values, time, LegalEntity, OwnershipClaim,
-                                markers, RNG, shared commands/events  (PackageId: Novolis.Economy)
-Novolis.Economy.Core            bounded-minimum EconomyState + IEconomyStep pipeline
-                                (self-contained; weave into Simulation/Logistics deferred)
-Novolis.Economy.Production      recipes, batches, inventory store, production engine
-Novolis.Economy.Markets         market estimates / observed trade book
-Novolis.Economy.Accounting      ledger, invoices, ownership engine (claim DTO in Primitives)
-Novolis.Economy.Finance         inter-firm term loans, interest, default hooks
-Novolis.Economy.Logistics       hub/corridor/vehicle models + engines (IDs in Primitives)
-Novolis.Economy.Population      cohorts, preference-weighted demand engine
-Novolis.Economy.Agents          heuristic economic agents (not ML) that enqueue commands
-Novolis.Economy.Simulation      composition root: EconomyWorld, phase pipeline (not type home for parties)
+Novolis.Economy.Core            KERNEL — EconomyState, Money, LegalEntityId/RegionId/ResourceId,
+                                holdings, claims, banks, 16-step period pipeline, invariants
+Novolis.Economy.Production      recipes, batches, Quantity/Percentage, facility/process/location IDs
+Novolis.Economy.Markets         market estimates / observed trade book / hub order side
+Novolis.Economy.Accounting      ledger, invoices, OwnershipClaim (ops), ownership engine
+Novolis.Economy.Logistics       hubs/corridors/vehicles, hour clock, shipment schedule → Core transfers
+Novolis.Economy.Finance         inter-firm term loans (ops) bridging toward Core credit
+Novolis.Economy.Population      cohorts, HouseholdProductivity (ops), demand engine
+Novolis.Economy.Simulation      composition root: hour loop + period-boundary Core Advance;
+                                commands/events/RNG; EconomyWorld ops side-state + CoreState
+Novolis.Economy.Agents          heuristic agents that enqueue commands (not ML)
 ```
 
-`Novolis.Economy` is the **Primitives** leaf: domain packages and Simulation depend on it. Simulation holds `Entities` / `OwnershipClaims` dictionaries/lists but does not define those types.
+### Type migration map
 
-`Novolis.Economy.Core` is a self-contained rigorous aggregate-state experiment (regions, cohorts, activities, holdings, transfers, shares, loans + ordered steps). It does **not** reference other Economy packages yet; Logistics/Simulation remain the operational encoding until a deliberate weave.
+| Former prim (`Novolis.Economy`) | Home after pivot |
+|---------------------------------|------------------|
+| `Money` | **Core** `Money` (global alias) |
+| `FirmId` / party key | **Core** `LegalEntityId` (global alias `FirmId`) |
+| `ProductId` | **Core** `ResourceId` (global alias `ProductId`) |
+| `GeographicAreaId` | **Core** `RegionId` (global alias `GeographicAreaId`) |
+| `ConsumerCohortId` | **Core** `CohortId` (global alias `ConsumerCohortId`) |
+| `LoanId` | **Core** `LoanId` |
+| `Quantity`, `Percentage` | **Production** (namespace `Novolis.Economy`) |
+| `SimulationHour` / `Date` / `Duration` | **Logistics** (namespace `Novolis.Economy`; shared ops clock) |
+| Facility / process / inventory / brand IDs | **Production** |
+| Transport / shipment / route / vehicle IDs | **Logistics** |
+| `IEconomyCommand` / events / RNG / markers | **Simulation** |
+| Ops `LegalEntity` / `LegalEntityKind` (Firm/Civic/Household) | **Simulation** (distinct from Core BM kinds) |
+| `OwnershipClaim` | **Accounting** |
+| `HouseholdProductivity*` | **Population** |
+
+### Time model
+
+- **Hours** advance carriage (Logistics) and ops phases only.
+- **Core period** settles economics via `EconomyEngine.Advance` / `DefaultPeriodPipeline` at `PeriodHours` boundaries.
+- Do not enlarge Core with unused primitives.
+
+**Frozen:** no new features on the deleted PackageId `Novolis.Economy`.
 
 ## World model
 
@@ -130,8 +154,7 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **`PriceElasticity`** policy → `DemandEngine` scales buy qty by relative price.
 - **`MoneyStock.Liquid`** — firm cash + household budgets.
 - **Finance** — `OriginateLoan` / `RepayLoan`, hourly interest onto notes, term default (`SettleFinance`) with **credit freeze**, facility absorb to lender, and ownership claim transfer.
-- **Legal entity** — `LegalEntity` / `LegalEntityKind` in **Primitives** (`Novolis.Economy`); Simulation stores them on the world. Optional `RegistryId`, `CreditFrozen`. Households remain cohorts; ships/hubs/facilities are assets of a firm.
-- **Ownership** — `OwnershipClaim` in Primitives; `OwnershipEngine` + dividends in Accounting. Ledger `Equity` account ≠ share claims.
+- **Legal entity** — ops `LegalEntity` / `LegalEntityKind` (Firm/Civic/Household) live in **Simulation**; Core has its own BM `LegalEntityKind`. Simulation stores ops entities on the world and `CoreState` for the kernel.
 - **Capacity** — `UpgradeFacility` spends cash and scales manufacturing/assembly unit capacity.
 - **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML. Treasury skips credit-frozen borrowers.
 - **Households / regions** — `LegalEntityKind.Household` per cohort; spendable liquid is **only** `BudgetRemaining` (ledger cash unused for spending). `PopulationCount` is household count (no headcount). `HouseholdProductivityKind` Common/Mean/Extreme → 12/18/24 hours per household-day; region labor pool = `Households × HoursPerDay / 24` per tick. `EconomicRegion` living + production caps (mfg/assembly slots only). Comfort: invest/lend iff `BudgetRemaining > ComfortThresholdPerHousehold × Households` (default 50). Guards in ApplyDecisions. Wages credit cohorts in the facility's area. `PurchaseOwnership` / household `OriginateLoan` debit budget.

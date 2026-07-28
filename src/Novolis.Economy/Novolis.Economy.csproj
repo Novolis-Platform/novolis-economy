@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <PackageId>Novolis.Economy</PackageId>
-    <IsPackable>true</IsPackable>
-    <Description>Primitives package for Novolis.Economy: strong IDs (including transport hub/corridor/vehicle), Money/Quantity/time, LegalEntity and OwnershipClaim, command/event markers, and deterministic RNG.</Description>
-    <RootNamespace>Novolis.Economy</RootNamespace>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
-</Project>

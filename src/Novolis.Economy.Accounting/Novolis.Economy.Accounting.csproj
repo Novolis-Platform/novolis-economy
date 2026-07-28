@@ -2,11 +2,12 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Accounting</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Double-entry ledgers, invoices, period close, and ownership engine (OwnershipClaim DTO lives in Novolis.Economy primitives).</Description>
+    <Description>Double-entry ledgers, invoices, period close, and ownership engine.</Description>
     <RootNamespace>Novolis.Economy.Accounting</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
   </ItemGroup>
 </Project>
