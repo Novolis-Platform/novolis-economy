@@ -67,6 +67,11 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         }
         case OriginateLoan originate:
         {
+          if (world.IsCreditFrozen(originate.BorrowerFirmId))
+          {
+            break;
+          }
+
           var loan = LoanEngine.TryOriginate(
             world.Ledgers,
             originate,
@@ -92,6 +97,85 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
             {
               context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));
             }
+          }
+
+          break;
+        }
+        case AssignOwnership assign:
+        {
+          if (OwnershipEngine.TryAssign(
+                world.OwnershipClaims,
+                assign.IssuerFirmId,
+                assign.OwnerFirmId,
+                assign.Fraction,
+                world.CanIssueShares))
+          {
+            context.State.AppendEvent(new OwnershipChanged(
+              hour, assign.IssuerFirmId, assign.OwnerFirmId, assign.Fraction));
+          }
+
+          break;
+        }
+        case TransferOwnership transfer:
+        {
+          if (OwnershipEngine.TryTransfer(
+                world.OwnershipClaims,
+                transfer.IssuerFirmId,
+                transfer.FromOwnerFirmId,
+                transfer.ToOwnerFirmId,
+                transfer.Fraction,
+                world.CanIssueShares))
+          {
+            var fromFrac = world.OwnershipClaims
+              .FirstOrDefault(c =>
+                c.IssuerFirmId.Equals(transfer.IssuerFirmId)
+                && c.OwnerFirmId.Equals(transfer.FromOwnerFirmId))
+              ?.Fraction ?? 0m;
+            var toFrac = world.OwnershipClaims
+              .FirstOrDefault(c =>
+                c.IssuerFirmId.Equals(transfer.IssuerFirmId)
+                && c.OwnerFirmId.Equals(transfer.ToOwnerFirmId))
+              ?.Fraction ?? 0m;
+            context.State.AppendEvent(new OwnershipChanged(
+              hour, transfer.IssuerFirmId, transfer.FromOwnerFirmId, fromFrac));
+            context.State.AppendEvent(new OwnershipChanged(
+              hour, transfer.IssuerFirmId, transfer.ToOwnerFirmId, toFrac));
+          }
+
+          break;
+        }
+        case DeclareDividend div:
+        {
+          foreach (var (owner, amount) in OwnershipEngine.TryDeclareDividend(
+                     world.OwnershipClaims,
+                     world.Ledgers,
+                     div.IssuerFirmId,
+                     div.Total,
+                     hour.Date))
+          {
+            context.State.AppendEvent(new DividendPaid(hour, div.IssuerFirmId, owner, amount));
+          }
+
+          break;
+        }
+        case UpgradeFacility upgrade:
+        {
+          var upgraded = DefaultConsequenceEngine.TryUpgradeFacility(
+            world, upgrade, hour, out var failReason);
+          if (upgraded is null)
+          {
+            context.State.AppendEvent(new FacilityUpgradeFailed(
+              hour, upgrade.FacilityId, failReason ?? "failed"));
+          }
+          else
+          {
+            context.State.AppendEvent(new FacilityUpgraded(
+              hour,
+              upgraded.Id,
+              upgraded.FirmId,
+              upgrade.Cost,
+              upgrade.CapacityFactor,
+              upgraded.ManufacturingCapacity));
           }
 
           break;
@@ -901,6 +985,12 @@ public sealed class SettleFinancePhase : ISimulationPhase
         loan.Status = LoanStatus.Defaulted;
         context.State.AppendEvent(new LoanDefaulted(
           hour, loan.Id, loan.BorrowerFirmId, loan.PrincipalRemaining));
+        DefaultConsequenceEngine.ApplyAbsorb(
+          world,
+          loan.LenderFirmId,
+          loan.BorrowerFirmId,
+          hour,
+          context.State.AppendEvent);
       }
     }
 

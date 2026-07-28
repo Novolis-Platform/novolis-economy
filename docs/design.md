@@ -121,9 +121,12 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **`ProductionThrottle`** — taper rate as inventory approaches target.
 - **`PriceElasticity`** policy → `DemandEngine` scales buy qty by relative price.
 - **`MoneyStock.Liquid`** — firm cash + household budgets.
-- **Finance** — `OriginateLoan` / `RepayLoan`, hourly interest onto notes, term default (`SettleFinance`).
-- **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML.
+- **Finance** — `OriginateLoan` / `RepayLoan`, hourly interest onto notes, term default (`SettleFinance`) with **credit freeze**, facility absorb to lender, and ownership claim transfer.
+- **Legal entity** — `LegalEntity` metadata on `FirmId` (`Firm` / `Civic`), optional `RegistryId`, `CreditFrozen`. Households remain cohorts; ships/hubs/facilities are assets of a firm.
+- **Ownership** — `OwnershipClaim`, `AssignOwnership` / `TransferOwnership` / `DeclareDividend` (cash conserving). Ledger `Equity` account ≠ share claims.
+- **Capacity** — `UpgradeFacility` spends cash and scales manufacturing/assembly unit capacity.
+- **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML. Treasury skips credit-frozen borrowers.
 
 ## Non-goals
 
-UI/host, ML / LLM agents, gamification (XP, morale meters), full bankruptcy liquidation, labor matching, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics.
+UI/host, ML / LLM agents, gamification (XP, morale meters), full bankruptcy liquidation UI, labor matching, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics, `Novolis.Economy.Civics` package (civic = firm kind + toll beneficiary).

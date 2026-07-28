@@ -2,6 +2,13 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Legal entity, ownership, capacity, default absorb
+
+- `LegalEntity` (Firm / Civic) on `FirmId`, `RegistryId`, `CreditFrozen`
+- Ownership claims + dividends; `UpgradeFacility` capacity investment
+- On `LoanDefaulted`: freeze borrower credit, rebind facilities to lender, transfer issuer ownership claims
+- Builder: `AddCivic`, `SetOwnership`
+
 ## 2026.1.x — Economic agents + finance
 
 - `Novolis.Economy.Finance` — term loans, interest accrual, repayment, default hooks; `SettleFinance` phase

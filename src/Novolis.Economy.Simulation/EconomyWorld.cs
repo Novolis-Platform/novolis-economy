@@ -130,8 +130,14 @@ public sealed class EconomyWorld
   /// <summary>Firm display names.</summary>
   public Dictionary<FirmId, string> Firms { get; } = new();
 
+  /// <summary>Legal-entity metadata keyed by firm id (Firm / Civic).</summary>
+  public Dictionary<FirmId, LegalEntity> Entities { get; } = new();
+
   /// <summary>Ledgers by firm.</summary>
   public Dictionary<FirmId, FirmLedger> Ledgers { get; } = new();
+
+  /// <summary>Ownership claims (issuer → owners).</summary>
+  public List<OwnershipClaim> OwnershipClaims { get; } = [];
 
   /// <summary>Facilities.</summary>
   public Dictionary<FacilityId, FacilityBinding> Facilities { get; } = new();
@@ -214,7 +220,7 @@ public sealed class EconomyWorld
   /// <summary>Default geographic area for market estimates.</summary>
   public GeographicAreaId DefaultArea { get; set; } = GeographicAreaId.From(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
 
-  /// <summary>Ensures a firm ledger and defaults exist.</summary>
+  /// <summary>Ensures a firm ledger, legal entity (Firm), and defaults exist.</summary>
   public FirmLedger EnsureFirm(FirmId firmId, string name)
   {
     Firms[firmId] = name;
@@ -224,11 +230,29 @@ public sealed class EconomyWorld
       Ledgers[firmId] = ledger;
     }
 
+    Entities.TryAdd(firmId, new LegalEntity(firmId, LegalEntityKind.Firm));
     Productivity.TryAdd(firmId, 1m);
     AvailableLaborHours.TryAdd(firmId, 8m);
     AccruedWages.TryAdd(firmId, Money.Zero);
     return ledger;
   }
+
+  /// <summary>Ensures civic legal-entity metadata (ledger via <see cref="EnsureFirm"/>).</summary>
+  public LegalEntity EnsureCivic(FirmId firmId, string name, string? registryId = null)
+  {
+    EnsureFirm(firmId, name);
+    var entity = new LegalEntity(firmId, LegalEntityKind.Civic, registryId);
+    Entities[firmId] = entity;
+    return entity;
+  }
+
+  /// <summary>Whether the firm may issue ownership shares.</summary>
+  public bool CanIssueShares(FirmId firmId) =>
+    Entities.TryGetValue(firmId, out var e) && e.CanIssueShares;
+
+  /// <summary>Whether the firm is credit-frozen.</summary>
+  public bool IsCreditFrozen(FirmId firmId) =>
+    Entities.TryGetValue(firmId, out var e) && e.CreditFrozen;
 
   /// <summary>Retail facility map for demand (includes optional area for local clearing).</summary>
   public Dictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation, GeographicAreaId? Area)> RetailFacilityMap()
@@ -272,6 +296,28 @@ public sealed class EconomyWorld
     foreach (var cohort in Cohorts.OrderBy(c => c.Definition.Id.Value))
     {
       foreach (var b in decimal.GetBits(cohort.BudgetRemaining.Amount))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    foreach (var entity in Entities.Values.OrderBy(e => e.Id.Value))
+    {
+      hash = (hash ^ (ulong)(uint)entity.Kind) * prime;
+      hash = (hash ^ (entity.CreditFrozen ? 1UL : 0UL)) * prime;
+      if (entity.RegistryId is { } reg)
+      {
+        hash = (hash ^ (ulong)(uint)reg.GetHashCode()) * prime;
+      }
+    }
+
+    foreach (var claim in OwnershipClaims
+               .OrderBy(c => c.IssuerFirmId.Value)
+               .ThenBy(c => c.OwnerFirmId.Value))
+    {
+      hash = (hash ^ (ulong)claim.IssuerFirmId.Value.GetHashCode()) * prime;
+      hash = (hash ^ (ulong)claim.OwnerFirmId.Value.GetHashCode()) * prime;
+      foreach (var b in decimal.GetBits(claim.Fraction))
       {
         hash = (hash ^ (ulong)(uint)b) * prime;
       }

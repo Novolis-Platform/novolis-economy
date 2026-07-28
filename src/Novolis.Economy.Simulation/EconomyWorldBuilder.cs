@@ -36,6 +36,31 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
+  /// <summary>Registers a civic entity (treasury) with opening cash and optional registry id.</summary>
+  public EconomyWorldBuilder AddCivic(
+    FirmId firmId,
+    string name,
+    Money openingCash,
+    string? registryId = null)
+  {
+    var ledger = _world.EnsureFirm(firmId, name);
+    _world.EnsureCivic(firmId, name, registryId);
+    if (openingCash.Amount > 0m)
+    {
+      ledger.SeedCash(openingCash, SimulationDate.Epoch);
+    }
+
+    return this;
+  }
+
+  /// <summary>Sets an absolute ownership fraction (issuer must be Firm or Civic).</summary>
+  public EconomyWorldBuilder SetOwnership(FirmId issuer, FirmId owner, decimal fraction)
+  {
+    OwnershipEngine.TryAssign(
+      _world.OwnershipClaims, issuer, owner, fraction, _world.CanIssueShares);
+    return this;
+  }
+
   /// <summary>Registers a facility.</summary>
   public EconomyWorldBuilder AddFacility(FacilityBinding facility)
   {

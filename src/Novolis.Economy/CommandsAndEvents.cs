@@ -309,3 +309,68 @@ public sealed record LoanDefaulted(
   LoanId LoanId,
   FirmId BorrowerFirmId,
   Money PrincipalRemaining) : IEconomyEvent;
+
+/// <summary>Set an absolute ownership fraction on an issuer.</summary>
+public sealed record AssignOwnership(
+  FirmId IssuerFirmId,
+  FirmId OwnerFirmId,
+  decimal Fraction) : IEconomyCommand;
+
+/// <summary>Move ownership fraction between owners of the same issuer.</summary>
+public sealed record TransferOwnership(
+  FirmId IssuerFirmId,
+  FirmId FromOwnerFirmId,
+  FirmId ToOwnerFirmId,
+  decimal Fraction) : IEconomyCommand;
+
+/// <summary>Pay a cash dividend from issuer to claim holders (pro-rata).</summary>
+public sealed record DeclareDividend(
+  FirmId IssuerFirmId,
+  Money Total) : IEconomyCommand;
+
+/// <summary>Ownership claim changed.</summary>
+public sealed record OwnershipChanged(
+  SimulationHour Hour,
+  FirmId IssuerFirmId,
+  FirmId OwnerFirmId,
+  decimal Fraction) : IEconomyEvent;
+
+/// <summary>Dividend cash paid to one owner.</summary>
+public sealed record DividendPaid(
+  SimulationHour Hour,
+  FirmId IssuerFirmId,
+  FirmId OwnerFirmId,
+  Money Amount) : IEconomyEvent;
+
+/// <summary>Spend cash to scale facility manufacturing/assembly capacity.</summary>
+public sealed record UpgradeFacility(
+  FacilityId FacilityId,
+  Money Cost,
+  decimal CapacityFactor) : IEconomyCommand;
+
+/// <summary>Facility capacity increased after cash investment.</summary>
+public sealed record FacilityUpgraded(
+  SimulationHour Hour,
+  FacilityId FacilityId,
+  FirmId OwnerFirmId,
+  Money Cost,
+  decimal CapacityFactor,
+  Quantity ManufacturingCapacity) : IEconomyEvent;
+
+/// <summary>Facility upgrade rejected (usually insufficient cash).</summary>
+public sealed record FacilityUpgradeFailed(
+  SimulationHour Hour,
+  FacilityId FacilityId,
+  string Reason) : IEconomyEvent;
+
+/// <summary>Borrower credit frozen after default.</summary>
+public sealed record CreditFrozenSet(
+  SimulationHour Hour,
+  FirmId FirmId) : IEconomyEvent;
+
+/// <summary>Facility ownership rebinding after default absorb.</summary>
+public sealed record FacilityAbsorbed(
+  SimulationHour Hour,
+  FacilityId FacilityId,
+  FirmId FromFirmId,
+  FirmId ToFirmId) : IEconomyEvent;

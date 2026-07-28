@@ -46,6 +46,11 @@ public sealed class TreasuryFirmAgent : IEconomicAgent
 
     foreach (var borrower in _policy.EligibleBorrowers.OrderBy(f => f.Value))
     {
+      if (world.IsCreditFrozen(borrower))
+      {
+        continue;
+      }
+
       if (!world.Ledgers.TryGetValue(borrower, out var ledger)
           || ledger.Cash.Amount >= _policy.BorrowerCashFloor)
       {
