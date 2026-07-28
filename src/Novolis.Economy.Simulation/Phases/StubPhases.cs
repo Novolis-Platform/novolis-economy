@@ -60,7 +60,6 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
           if (order is not null)
           {
             world.HubOrders.Remove(order);
-            context.State.AppendEvent(new HubOrderCancelled(hour, cancel.OrderId));
           }
 
           break;
@@ -96,8 +95,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
       post.LimitPrice,
       hour);
     world.HubOrders.Add(order);
-    context.State.AppendEvent(new HubOrderPosted(
-      hour, id, post.FirmId, post.LocationId, post.ProductId, post.Side, post.Quantity, post.LimitPrice));
+    // Posted/cancelled quotes are high-churn; omit from the event log (fills still emit).
   }
 
   private static Guid CreateHubOrderId(FirmId firmId, int index)
@@ -703,13 +701,15 @@ public sealed class ResolveConsumerPurchasesPhase : ISimulationPhase
       world.Inventory,
       world.Ledgers,
       context.State.Clock,
-      context.State.AppendEvent,
+      e =>
+      {
+        context.State.AppendEvent(e);
+        if (e is MarketTradeObserved trade)
+        {
+          world.MarketBook.RecordTrade(trade.ProductId, trade.Quantity, trade.UnitPrice, trade.Hour);
+        }
+      },
       world.Policy.PriceElasticity);
-
-    foreach (var trade in context.State.Events.OfType<MarketTradeObserved>().Where(e => e.Hour.Equals(context.State.Clock)))
-    {
-      world.MarketBook.RecordTrade(trade.ProductId, trade.Quantity, trade.UnitPrice, trade.Hour);
-    }
 
     return ValueTask.CompletedTask;
   }

@@ -2,6 +2,12 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Simulation perf
+
+- Cache world fingerprint across `Enqueue` (recompute once per tick)
+- Record `MarketTradeObserved` into `MarketBook` inline (no full-event scan each hour)
+- Omit high-churn `HubOrderPosted` / `HubOrderCancelled` from the event log (fills still emit)
+
 ## 2026.1.x — Tycoon market primitives
 
 - Hub spot order book (`PostHubOrder`, `MatchHubOrders` phase, `HubOrderFilled`)

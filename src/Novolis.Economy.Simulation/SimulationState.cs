@@ -10,6 +10,7 @@ public sealed class SimulationState
   private readonly List<IEconomyEvent> _events = [];
   private readonly List<SimulationPhaseOrder> _lastTickPhases = [];
   private ulong _lastRngState;
+  private ulong _cachedWorldFingerprint;
 
   /// <summary>Creates state at epoch with the given seed and an empty world.</summary>
   public SimulationState(ulong seed)
@@ -25,6 +26,7 @@ public sealed class SimulationState
     World = world;
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
+    _cachedWorldFingerprint = world.Fingerprint();
     RecomputeHash();
   }
 
@@ -54,6 +56,7 @@ public sealed class SimulationState
   {
     ArgumentNullException.ThrowIfNull(command);
     _pendingCommands.Add(command);
+    // World is unchanged until the next tick — reuse cached fingerprint.
     RecomputeHash();
   }
 
@@ -79,6 +82,7 @@ public sealed class SimulationState
     _lastTickPhases.AddRange(phases);
     Clock = Clock.AddHours(1);
     _lastRngState = rngState;
+    _cachedWorldFingerprint = World.Fingerprint();
     RecomputeHash();
   }
 
@@ -98,7 +102,7 @@ public sealed class SimulationState
     hash = (hash ^ (ulong)_pendingCommands.Count) * prime;
     hash = (hash ^ (ulong)_events.Count) * prime;
     hash = (hash ^ _lastRngState) * prime;
-    hash = (hash ^ World.Fingerprint()) * prime;
+    hash = (hash ^ _cachedWorldFingerprint) * prime;
     Hash = hash;
   }
 }
