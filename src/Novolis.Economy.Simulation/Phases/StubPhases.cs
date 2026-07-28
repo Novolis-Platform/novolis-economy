@@ -72,11 +72,41 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
             break;
           }
 
-          var loan = LoanEngine.TryOriginate(
-            world.Ledgers,
-            originate,
-            hour,
-            () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+          Loan? loan = null;
+          if (world.IsHousehold(originate.LenderFirmId))
+          {
+            var cohort = world.FindCohortByHousehold(originate.LenderFirmId);
+            if (cohort is null || !world.IsAboveComfort(cohort))
+            {
+              break;
+            }
+
+            var after = cohort.BudgetRemaining.Amount - originate.Principal.Amount;
+            if (after <= world.ComfortFloor(cohort).Amount
+                || !world.TryDebitHouseholdBudget(originate.LenderFirmId, originate.Principal))
+            {
+              break;
+            }
+
+            loan = LoanEngine.TryOriginateHouseholdLender(
+              world.Ledgers,
+              originate,
+              hour,
+              () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+            if (loan is null)
+            {
+              world.CreditHouseholdBudget(originate.LenderFirmId, originate.Principal);
+            }
+          }
+          else
+          {
+            loan = LoanEngine.TryOriginate(
+              world.Ledgers,
+              originate,
+              hour,
+              () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+          }
+
           if (loan is not null)
           {
             world.Loans.Add(loan);
@@ -92,7 +122,14 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
           var loan = world.Loans.FirstOrDefault(l => l.Id.Equals(repay.LoanId));
           if (loan is not null)
           {
-            var paid = LoanEngine.TryRepay(loan, world.Ledgers, repay.Amount, hour);
+            var householdLender = world.IsHousehold(loan.LenderFirmId);
+            var paid = LoanEngine.TryRepay(
+              loan,
+              world.Ledgers,
+              repay.Amount,
+              hour,
+              householdLender,
+              householdLender ? world.CreditHouseholdBudget : null);
             if (paid.Amount > 0m)
             {
               context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));
@@ -151,11 +188,18 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
                      world.Ledgers,
                      div.IssuerFirmId,
                      div.Total,
-                     hour.Date))
+                     hour.Date,
+                     world.IsHousehold,
+                     world.CreditHouseholdBudget))
           {
             context.State.AppendEvent(new DividendPaid(hour, div.IssuerFirmId, owner, amount));
           }
 
+          break;
+        }
+        case PurchaseOwnership purchase:
+        {
+          TryPurchaseOwnership(world, context, hour, purchase);
           break;
         }
         case UpgradeFacility upgrade:
@@ -187,6 +231,101 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     }
 
     return ValueTask.CompletedTask;
+  }
+
+  private static void TryPurchaseOwnership(
+    EconomyWorld world,
+    SimulationContext context,
+    SimulationHour hour,
+    PurchaseOwnership purchase)
+  {
+    if (purchase.Fraction <= 0m
+        || purchase.Price.Amount < 0m
+        || !world.CanIssueShares(purchase.IssuerFirmId)
+        || !world.Ledgers.TryGetValue(purchase.IssuerFirmId, out var issuerLedger))
+    {
+      return;
+    }
+
+    if (world.IsHousehold(purchase.BuyerFirmId))
+    {
+      var cohort = world.FindCohortByHousehold(purchase.BuyerFirmId);
+      if (cohort is null || !world.IsAboveComfort(cohort))
+      {
+        return;
+      }
+
+      var after = cohort.BudgetRemaining.Amount - purchase.Price.Amount;
+      if (after <= world.ComfortFloor(cohort).Amount)
+      {
+        return;
+      }
+
+      if (!OwnershipEngine.TryAddClaim(
+            world.OwnershipClaims,
+            purchase.IssuerFirmId,
+            purchase.BuyerFirmId,
+            purchase.Fraction,
+            world.CanIssueShares))
+      {
+        return;
+      }
+
+      if (!world.TryDebitHouseholdBudget(purchase.BuyerFirmId, purchase.Price))
+      {
+        // Roll back claim add by transferring fraction back to zero incrementally.
+        OwnershipEngine.TryTransfer(
+          world.OwnershipClaims,
+          purchase.IssuerFirmId,
+          purchase.BuyerFirmId,
+          purchase.IssuerFirmId,
+          purchase.Fraction,
+          world.CanIssueShares);
+        var orphan = world.OwnershipClaims.FirstOrDefault(c =>
+          c.IssuerFirmId.Equals(purchase.IssuerFirmId)
+          && c.OwnerFirmId.Equals(purchase.IssuerFirmId));
+        if (orphan is not null)
+        {
+          world.OwnershipClaims.Remove(orphan);
+        }
+
+        return;
+      }
+
+      OwnershipEngine.PostOwnershipSaleProceeds(issuerLedger, purchase.Price, hour.Date);
+    }
+    else
+    {
+      if (!world.Ledgers.TryGetValue(purchase.BuyerFirmId, out var buyerLedger)
+          || buyerLedger.Cash.Amount + 0.0000001m < purchase.Price.Amount)
+      {
+        return;
+      }
+
+      if (!OwnershipEngine.TryAddClaim(
+            world.OwnershipClaims,
+            purchase.IssuerFirmId,
+            purchase.BuyerFirmId,
+            purchase.Fraction,
+            world.CanIssueShares))
+      {
+        return;
+      }
+
+      buyerLedger.Post(
+        AccountRole.Equity, AccountRole.Cash, purchase.Price, hour.Date, "Ownership purchase");
+      OwnershipEngine.PostOwnershipSaleProceeds(issuerLedger, purchase.Price, hour.Date);
+    }
+
+    var frac = world.OwnershipClaims
+      .FirstOrDefault(c =>
+        c.IssuerFirmId.Equals(purchase.IssuerFirmId)
+        && c.OwnerFirmId.Equals(purchase.BuyerFirmId))
+      ?.Fraction ?? purchase.Fraction;
+    context.State.AppendEvent(new OwnershipChanged(
+      hour, purchase.IssuerFirmId, purchase.BuyerFirmId, frac));
+    context.State.AppendEvent(new OwnershipPurchased(
+      hour, purchase.IssuerFirmId, purchase.BuyerFirmId, purchase.Fraction, purchase.Price));
   }
 
   private static void PostOrder(
@@ -310,8 +449,18 @@ public sealed class AllocateLaborPhase : ISimulationPhase
       crewDemand[shipment.FirmId] = crewDemand.GetValueOrDefault(shipment.FirmId) + hours;
     }
 
+    if (world.RegionLaborPoolsActive)
+    {
+      ApplyRegionLaborPools(world);
+    }
+
     foreach (var (firmId, available) in world.AvailableLaborHours.OrderBy(kv => kv.Key.Value))
     {
+      if (world.IsHousehold(firmId))
+      {
+        continue;
+      }
+
       var planned = world.ProductionPlans
         .Where(p => p.Key.Firm == firmId)
         .Sum(p => p.Value.Value * world.Policy.LaborHoursPerOutputUnit);
@@ -331,6 +480,112 @@ public sealed class AllocateLaborPhase : ISimulationPhase
     }
 
     return ValueTask.CompletedTask;
+  }
+
+  /// <summary>
+  /// Sets firm <see cref="EconomyWorld.AvailableLaborHours"/> from per-area household pools.
+  /// </summary>
+  public static void ApplyRegionLaborPools(EconomyWorld world)
+  {
+    var peoplePer = world.Policy.PeoplePerHousehold;
+    var pools = new Dictionary<GeographicAreaId, decimal>();
+    foreach (var cohort in world.Cohorts)
+    {
+      var area = cohort.Definition.Area;
+      if (!world.Regions.ContainsKey(area))
+      {
+        continue;
+      }
+
+      var hours = HouseholdMath.LaborHoursPerTick(
+        cohort.Definition.Population,
+        cohort.Definition.Productivity,
+        peoplePer);
+      pools[area] = pools.GetValueOrDefault(area) + hours;
+    }
+
+    var remaining = pools.ToDictionary(kv => kv.Key, kv => kv.Value);
+    var firmAvailable = new Dictionary<FirmId, decimal>();
+
+    // Manufacturing demand by area → firm (deterministic firm order).
+    var demandByArea = new Dictionary<GeographicAreaId, List<(FirmId Firm, decimal Hours)>>();
+    foreach (var plan in world.ProductionPlans.OrderBy(p => p.Key.Firm.Value).ThenBy(p => p.Key.Facility.Value))
+    {
+      if (!world.Facilities.TryGetValue(plan.Key.Facility, out var facility)
+          || facility.Area is not { } area
+          || !world.Regions.ContainsKey(area))
+      {
+        continue;
+      }
+
+      var hours = plan.Value.Value * world.Policy.LaborHoursPerOutputUnit;
+      if (hours <= 0m)
+      {
+        continue;
+      }
+
+      if (!demandByArea.TryGetValue(area, out var list))
+      {
+        list = [];
+        demandByArea[area] = list;
+      }
+
+      var idx = list.FindIndex(x => x.Firm.Equals(plan.Key.Firm));
+      if (idx < 0)
+      {
+        list.Add((plan.Key.Firm, hours));
+      }
+      else
+      {
+        list[idx] = (plan.Key.Firm, list[idx].Hours + hours);
+      }
+    }
+
+    foreach (var area in demandByArea.Keys.OrderBy(a => a.Value))
+    {
+      var poolLeft = remaining.GetValueOrDefault(area);
+      foreach (var (firm, hours) in demandByArea[area].OrderBy(x => x.Firm.Value))
+      {
+        var take = Math.Min(hours, poolLeft);
+        if (take <= 0m)
+        {
+          continue;
+        }
+
+        firmAvailable[firm] = firmAvailable.GetValueOrDefault(firm) + take;
+        poolLeft -= take;
+      }
+
+      remaining[area] = poolLeft;
+    }
+
+    // Firms with region-only mfg demand get pool supply (legacy SetLabor ignored for those).
+    // Crew-only firms (carriers with storage posts) keep SetLabor.
+    foreach (var firmId in world.Firms.Keys.OrderBy(f => f.Value))
+    {
+      if (world.IsHousehold(firmId))
+      {
+        world.AvailableLaborHours[firmId] = 0m;
+        continue;
+      }
+
+      if (firmAvailable.TryGetValue(firmId, out var fromPool))
+      {
+        world.AvailableLaborHours[firmId] = fromPool;
+        continue;
+      }
+
+      var facilities = world.Facilities.Values.Where(f => f.FirmId.Equals(firmId)).ToList();
+      var hasRegionMfg = facilities.Any(f =>
+        f.Area is { } a
+        && world.Regions.ContainsKey(a)
+        && EconomicRegion.ConsumesProductionSlot(f.Layout));
+      if (hasRegionMfg)
+      {
+        world.AvailableLaborHours[firmId] = 0m;
+      }
+      // else keep builder / SetAvailableLabor value for crew-only operators
+    }
   }
 }
 
@@ -871,7 +1126,7 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
 
       if (world.Policy.HouseholdCreditFromWages && pay.Amount > 0m)
       {
-        DistributeWageCreditsToCohorts(world, pay.Amount);
+        DistributeWageCreditsForFirm(world, firmId, pay.Amount);
         context.State.AppendEvent(new HouseholdCreditsIssued(hour, firmId, pay));
       }
     }
@@ -903,6 +1158,69 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
     return ValueTask.CompletedTask;
   }
 
+  /// <summary>
+  /// Credits cohorts by facility area when the paying firm has area-bound facilities;
+  /// otherwise population-weighted global fallback.
+  /// </summary>
+  public static void DistributeWageCreditsForFirm(EconomyWorld world, FirmId firmId, decimal amount)
+  {
+    if (amount <= 0m || world.Cohorts.Count == 0)
+    {
+      return;
+    }
+
+    var facilities = world.Facilities.Values.Where(f => f.FirmId.Equals(firmId)).ToList();
+    var areaWeights = facilities
+      .Where(f => f.Area is not null)
+      .GroupBy(f => f.Area!.Value)
+      .Select(g => (Area: g.Key, Weight: Math.Max(1m, g.Sum(f => f.ManufacturingCapacity.Value))))
+      .ToList();
+
+    if (areaWeights.Count == 0)
+    {
+      DistributeWageCreditsToCohorts(world, amount);
+      return;
+    }
+
+    var totalWeight = areaWeights.Sum(a => a.Weight);
+    var allocated = 0m;
+    for (var i = 0; i < areaWeights.Count; i++)
+    {
+      var (area, weight) = areaWeights[i];
+      decimal share;
+      if (i == areaWeights.Count - 1)
+      {
+        share = amount - allocated;
+      }
+      else
+      {
+        share = Math.Round(amount * weight / totalWeight, 4, MidpointRounding.AwayFromZero);
+        allocated += share;
+      }
+
+      if (share > 0m)
+      {
+        DistributeWageCreditsToCohortsInArea(world, area, share);
+      }
+    }
+  }
+
+  /// <summary>Population-weighted split within one area; falls back globally if empty.</summary>
+  internal static void DistributeWageCreditsToCohortsInArea(
+    EconomyWorld world,
+    GeographicAreaId area,
+    decimal amount)
+  {
+    var local = world.Cohorts.Where(c => c.Definition.Area.Equals(area)).ToList();
+    if (local.Count == 0)
+    {
+      DistributeWageCreditsToCohorts(world, amount);
+      return;
+    }
+
+    CreditCohortsPopulationWeighted(local, amount);
+  }
+
   /// <summary>Population-weighted split; remainder to largest cohort (stable id tie-break).</summary>
   internal static void DistributeWageCreditsToCohorts(EconomyWorld world, decimal amount)
   {
@@ -911,14 +1229,19 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
       return;
     }
 
-    var popTotal = world.Cohorts.Sum(c => Math.Max(1, c.Definition.Population.Value));
-    if (popTotal <= 0)
+    CreditCohortsPopulationWeighted(world.Cohorts, amount);
+  }
+
+  private static void CreditCohortsPopulationWeighted(IReadOnlyList<CohortState> cohorts, decimal amount)
+  {
+    var popTotal = cohorts.Sum(c => Math.Max(1, c.Definition.Population.Value));
+    if (popTotal <= 0 || amount <= 0m)
     {
       return;
     }
 
     var allocated = 0m;
-    var ordered = world.Cohorts
+    var ordered = cohorts
       .OrderByDescending(c => c.Definition.Population.Value)
       .ThenBy(c => c.Definition.Id.Value)
       .ToList();
@@ -974,7 +1297,14 @@ public sealed class SettleFinancePhase : ISimulationPhase
       }
 
       var owed = loan.PrincipalRemaining;
-      var paid = LoanEngine.TryRepay(loan, world.Ledgers, owed, hour);
+      var householdLender = world.IsHousehold(loan.LenderFirmId);
+      var paid = LoanEngine.TryRepay(
+        loan,
+        world.Ledgers,
+        owed,
+        hour,
+        householdLender,
+        householdLender ? world.CreditHouseholdBudget : null);
       if (paid.Amount > 0m)
       {
         context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));

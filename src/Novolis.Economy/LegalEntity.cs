@@ -8,11 +8,14 @@ public enum LegalEntityKind
 
   /// <summary>Civic / treasury party (may issue shares; product copy may say Civics).</summary>
   Civic = 1,
+
+  /// <summary>Household sector party (owns claims; does not issue shares).</summary>
+  Household = 2,
 }
 
 /// <summary>
 /// Legal-entity metadata for a firm id. Ships, hubs, and facilities remain assets of an entity.
-/// Households stay cohorts (not entities this pass). Lives in the Primitives package.
+/// Household spendable liquid is cohort <c>BudgetRemaining</c> (ledger cash unused for Household).
 /// </summary>
 public sealed class LegalEntity
 {
@@ -30,7 +33,7 @@ public sealed class LegalEntity
   /// <summary>Same id as the firm ledger key.</summary>
   public FirmId Id { get; }
 
-  /// <summary>Firm or civic.</summary>
+  /// <summary>Firm, civic, or household.</summary>
   public LegalEntityKind Kind { get; init; }
 
   /// <summary>Opaque registry / jurisdiction label (not a map place).</summary>

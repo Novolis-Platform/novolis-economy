@@ -374,3 +374,18 @@ public sealed record FacilityAbsorbed(
   FacilityId FacilityId,
   FirmId FromFirmId,
   FirmId ToFirmId) : IEconomyEvent;
+
+/// <summary>Pay cash for an ownership fraction (households debit BudgetRemaining).</summary>
+public sealed record PurchaseOwnership(
+  FirmId IssuerFirmId,
+  FirmId BuyerFirmId,
+  decimal Fraction,
+  Money Price) : IEconomyCommand;
+
+/// <summary>Ownership purchased for cash/budget.</summary>
+public sealed record OwnershipPurchased(
+  SimulationHour Hour,
+  FirmId IssuerFirmId,
+  FirmId BuyerFirmId,
+  decimal Fraction,
+  Money Price) : IEconomyEvent;

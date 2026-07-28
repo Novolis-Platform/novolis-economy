@@ -53,6 +53,16 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
+  /// <summary>Registers a habitat/region with living and production caps.</summary>
+  public EconomyWorldBuilder AddRegion(
+    GeographicAreaId areaId,
+    int livingCapacityHouseholds,
+    int productionSlots)
+  {
+    _world.Regions[areaId] = new EconomicRegion(areaId, livingCapacityHouseholds, productionSlots);
+    return this;
+  }
+
   /// <summary>Sets an absolute ownership fraction (issuer must be Firm or Civic).</summary>
   public EconomyWorldBuilder SetOwnership(FirmId issuer, FirmId owner, decimal fraction)
   {
@@ -61,9 +71,17 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
-  /// <summary>Registers a facility.</summary>
+  /// <summary>Registers a facility (mfg/assembly count against region production slots).</summary>
   public EconomyWorldBuilder AddFacility(FacilityBinding facility)
   {
+    if (facility.Area is { } area
+        && _world.Regions.TryGetValue(area, out var region)
+        && EconomicRegion.ConsumesProductionSlot(facility.Layout)
+        && _world.UsedProductionSlots(area) >= region.ProductionSlots)
+    {
+      return this;
+    }
+
     _world.Facilities[facility.Id] = facility;
     _world.EnsureFirm(facility.FirmId, _world.Firms.GetValueOrDefault(facility.FirmId, facility.FirmId.ToString()));
     return this;
@@ -127,10 +145,36 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
-  /// <summary>Adds a consumer cohort.</summary>
+  /// <summary>Adds a consumer cohort as a household entity; clamps living capacity when region exists.</summary>
   public EconomyWorldBuilder AddCohort(ConsumerCohort cohort)
   {
-    _world.Cohorts.Add(new CohortState(cohort));
+    var peoplePer = _world.Policy.PeoplePerHousehold;
+    var pop = cohort.Population;
+    if (_world.Regions.TryGetValue(cohort.Area, out var region))
+    {
+      var used = _world.UsedLivingHouseholds(cohort.Area);
+      var remaining = Math.Max(0, region.LivingCapacityHouseholds - used);
+      var want = HouseholdMath.Count(pop, peoplePer);
+      if (want > remaining)
+      {
+        var maxPeople = remaining <= 0 ? 0 : remaining * peoplePer;
+        pop = new PopulationCount(maxPeople);
+      }
+    }
+
+    if (pop.Value <= 0)
+    {
+      return this;
+    }
+
+    var householdId = cohort.HouseholdFirmId ?? FirmId.From(NextGuid());
+    _world.EnsureHousehold(householdId, $"Household {cohort.Id.Value.ToString("N")[..8]}");
+    var linked = cohort with
+    {
+      Population = pop,
+      HouseholdFirmId = householdId,
+    };
+    _world.Cohorts.Add(new CohortState(linked));
     return this;
   }
 

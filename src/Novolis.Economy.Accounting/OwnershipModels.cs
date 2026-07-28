@@ -129,13 +129,16 @@ public static class OwnershipEngine
   /// <summary>
   /// Pays dividend from issuer cash to owners pro-rata. Conserves liquid.
   /// Short-pays in owner-id order when cash is insufficient for the full total.
+  /// Household owners credit <paramref name="creditHouseholdBudget"/> instead of ledger cash.
   /// </summary>
   public static IReadOnlyList<(FirmId Owner, Money Amount)> TryDeclareDividend(
     IList<OwnershipClaim> claims,
     IDictionary<FirmId, FirmLedger> ledgers,
     FirmId issuer,
     Money total,
-    SimulationDate date)
+    SimulationDate date,
+    Func<FirmId, bool>? isHousehold = null,
+    Action<FirmId, Money>? creditHouseholdBudget = null)
   {
     var paid = new List<(FirmId, Money)>();
     if (total.Amount <= 0m
@@ -171,7 +174,7 @@ public static class OwnershipEngine
       var share = pool * (claim.Fraction / fractionSum);
       // Recompute remaining pool after rounding by using min remaining cash.
       share = Math.Min(share, issuerLedger.Cash.Amount);
-      if (share <= 0.0000001m || !ledgers.TryGetValue(claim.OwnerFirmId, out var ownerLedger))
+      if (share <= 0.0000001m)
       {
         continue;
       }
@@ -182,12 +185,76 @@ public static class OwnershipEngine
         continue;
       }
 
-      PostDividend(issuerLedger, ownerLedger, money, date);
+      var household = isHousehold?.Invoke(claim.OwnerFirmId) == true;
+      if (household)
+      {
+        if (creditHouseholdBudget is null)
+        {
+          continue;
+        }
+
+        issuerLedger.Post(AccountRole.Equity, AccountRole.Cash, money, date, "Dividend paid");
+        creditHouseholdBudget(claim.OwnerFirmId, money);
+      }
+      else
+      {
+        if (!ledgers.TryGetValue(claim.OwnerFirmId, out var ownerLedger))
+        {
+          continue;
+        }
+
+        PostDividend(issuerLedger, ownerLedger, money, date);
+      }
+
       paid.Add((claim.OwnerFirmId, money));
       pool -= money.Amount;
     }
 
     return paid;
+  }
+
+  /// <summary>Adds an ownership fraction for a buyer when totals stay ≤ 1.</summary>
+  public static bool TryAddClaim(
+    IList<OwnershipClaim> claims,
+    FirmId issuer,
+    FirmId buyer,
+    decimal fraction,
+    Func<FirmId, bool> canIssueShares)
+  {
+    if (fraction <= 0m || !canIssueShares(issuer))
+    {
+      return false;
+    }
+
+    var existing = claims.Where(c => c.IssuerFirmId.Equals(issuer)).Sum(c => c.Fraction);
+    if (existing + fraction > 1m + 0.0000001m)
+    {
+      return false;
+    }
+
+    var mine = claims.FirstOrDefault(c =>
+      c.IssuerFirmId.Equals(issuer) && c.OwnerFirmId.Equals(buyer));
+    if (mine is null)
+    {
+      claims.Add(new OwnershipClaim(issuer, buyer, fraction));
+    }
+    else
+    {
+      mine.Fraction += fraction;
+    }
+
+    return true;
+  }
+
+  /// <summary>Issuer receives cash for ownership sale (equity ↑ / cash ↑).</summary>
+  public static void PostOwnershipSaleProceeds(FirmLedger issuer, Money price, SimulationDate date)
+  {
+    if (price.Amount <= 0m)
+    {
+      return;
+    }
+
+    issuer.Post(AccountRole.Cash, AccountRole.Equity, price, date, "Ownership sale proceeds");
   }
 
   /// <summary>Issuer equity↓/cash↓; owner cash↑/equity↑.</summary>

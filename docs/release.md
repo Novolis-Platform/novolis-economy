@@ -2,6 +2,13 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Households, regions, labor, comfort
+
+- `LegalEntityKind.Household`; `HouseholdProductivityKind` (12/18/24 hh-hours/day); `PurchaseOwnership`
+- `EconomicRegion` living/production caps; region labor pools; wages by facility area → `BudgetRemaining`
+- Comfort guards on household lend/invest; single spendable wallet (`BudgetRemaining`)
+- `HouseholdFirmAgent`; builder `AddRegion` + living clamp / mfg production slots
+
 ## 2026.1.x — Primitives lift
 
 - `LegalEntity` / `OwnershipClaim` and transport hub/corridor/vehicle **IDs** live in `Novolis.Economy` (Primitives package branding)

@@ -4,6 +4,8 @@ Deterministic economic tick runner: `EconomyWorld`, ordered phases, command queu
 
 Holds collections of `LegalEntity` and `OwnershipClaim` (types defined in **`Novolis.Economy` Primitives**). Does not own those type definitions.
 
+`EconomicRegion` + `AddRegion` / household `AddCohort` living clamp; region labor pools; production slots for mfg/assembly only.
+
 ```bash
 dotnet add package Novolis.Economy.Simulation
 ```

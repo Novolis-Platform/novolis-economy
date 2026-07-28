@@ -130,7 +130,9 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **Ownership** — `OwnershipClaim` in Primitives; `OwnershipEngine` + dividends in Accounting. Ledger `Equity` account ≠ share claims.
 - **Capacity** — `UpgradeFacility` spends cash and scales manufacturing/assembly unit capacity.
 - **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML. Treasury skips credit-frozen borrowers.
+- **Households / regions** — `LegalEntityKind.Household` per cohort; spendable liquid is **only** `BudgetRemaining` (ledger cash unused for spending). `HouseholdProductivityKind` Common/Mean/Extreme → 12/18/24 hours per household-day; region labor pool = `HouseholdCount × HoursPerDay / 24` per tick. `EconomicRegion` living + production caps (mfg/assembly slots only). Comfort: invest/lend iff `BudgetRemaining > ComfortThresholdPerHousehold × HouseholdCount` (default 50). Guards in ApplyDecisions. Wages credit cohorts in the facility's area. `PurchaseOwnership` / household `OriginateLoan` debit budget.
+- **HouseholdFirmAgent** — comfort hold vs small lend/invest.
 
 ## Non-goals
 
-UI/host, ML / LLM agents, gamification (XP, morale meters), full bankruptcy liquidation UI, labor matching, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics, `Novolis.Economy.Civics` package (civic = firm kind + toll beneficiary).
+UI/host, ML / LLM agents, gamification (XP, morale meters), full bankruptcy liquidation UI, binding labor scarcity tuning, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics, `Novolis.Economy.Civics` package (civic = firm kind + toll beneficiary), per-person entities, intra-habitat logistics.

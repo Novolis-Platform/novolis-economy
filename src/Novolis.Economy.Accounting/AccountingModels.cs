@@ -291,6 +291,33 @@ public static class LedgerEngine
     borrower.Post(AccountRole.Cash, AccountRole.NotesPayable, principal, date, "Loan proceeds");
   }
 
+  /// <summary>
+  /// Household lender: notes receivable ↑ / equity ↑ (budget already debited).
+  /// Borrower: cash ↑ / notes payable ↑.
+  /// </summary>
+  public static void PostHouseholdLoanDisbursement(
+    FirmLedger lender,
+    FirmLedger borrower,
+    Money principal,
+    SimulationDate date)
+  {
+    lender.Post(AccountRole.NotesReceivable, AccountRole.Equity, principal, date, "Household loan disbursement");
+    borrower.Post(AccountRole.Cash, AccountRole.NotesPayable, principal, date, "Loan proceeds");
+  }
+
+  /// <summary>
+  /// Borrower pays household lender: notes ↓; cash leaves borrower (budget credited separately).
+  /// </summary>
+  public static void PostHouseholdLoanRepayment(
+    FirmLedger lender,
+    FirmLedger borrower,
+    Money amount,
+    SimulationDate date)
+  {
+    borrower.Post(AccountRole.NotesPayable, AccountRole.Cash, amount, date, "Loan repayment");
+    lender.Post(AccountRole.Equity, AccountRole.NotesReceivable, amount, date, "Household loan repayment");
+  }
+
   /// <summary>Accrue interest onto notes without moving cash.</summary>
   public static void PostInterestAccrual(
     FirmLedger lender,

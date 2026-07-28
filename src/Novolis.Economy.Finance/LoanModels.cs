@@ -115,6 +115,37 @@ public static class LoanEngine
       hour.AddHours(cmd.TermHours));
   }
 
+  /// <summary>
+  /// Disburses a loan funded from household budget (caller already validated comfort + debit).
+  /// </summary>
+  public static Loan? TryOriginateHouseholdLender(
+    IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
+    OriginateLoan cmd,
+    SimulationHour hour,
+    Func<LoanId> nextId)
+  {
+    if (cmd.Principal.Amount <= 0m
+        || cmd.TermHours <= 0
+        || cmd.LenderFirmId.Equals(cmd.BorrowerFirmId)
+        || !ledgers.TryGetValue(cmd.LenderFirmId, out var lender)
+        || !ledgers.TryGetValue(cmd.BorrowerFirmId, out var borrower))
+    {
+      return null;
+    }
+
+    Novolis.Economy.Accounting.LedgerEngine.PostHouseholdLoanDisbursement(
+      lender, borrower, cmd.Principal, hour.Date);
+    var id = nextId();
+    return new Loan(
+      id,
+      cmd.LenderFirmId,
+      cmd.BorrowerFirmId,
+      cmd.Principal,
+      cmd.AnnualInterestRate,
+      hour,
+      hour.AddHours(cmd.TermHours));
+  }
+
   /// <summary>Capitalizes one hour of interest onto principal / notes.</summary>
   public static Money AccrueHour(
     Loan loan,
@@ -145,7 +176,9 @@ public static class LoanEngine
     Loan loan,
     IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
     Money amount,
-    SimulationHour hour)
+    SimulationHour hour,
+    bool lenderIsHousehold = false,
+    Action<FirmId, Money>? creditHouseholdBudget = null)
   {
     if (loan.Status is not LoanStatus.Active and not LoanStatus.Defaulted
         || amount.Amount <= 0m
@@ -162,7 +195,17 @@ public static class LoanEngine
     }
 
     var money = Money.From(pay);
-    Novolis.Economy.Accounting.LedgerEngine.PostLoanRepayment(lender, borrower, money, hour.Date);
+    if (lenderIsHousehold)
+    {
+      Novolis.Economy.Accounting.LedgerEngine.PostHouseholdLoanRepayment(
+        lender, borrower, money, hour.Date);
+      creditHouseholdBudget?.Invoke(loan.LenderFirmId, money);
+    }
+    else
+    {
+      Novolis.Economy.Accounting.LedgerEngine.PostLoanRepayment(lender, borrower, money, hour.Date);
+    }
+
     loan.PrincipalRemaining = Money.From(loan.PrincipalRemaining.Amount - pay);
     if (loan.PrincipalRemaining.Amount <= 0.0000001m)
     {

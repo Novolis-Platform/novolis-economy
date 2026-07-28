@@ -61,6 +61,17 @@ public sealed class EconomyPolicy
   /// 0 = legacy (ignore price vs reference); typical soft values 0.5–1.5.
   /// </summary>
   public decimal PriceElasticity { get; init; }
+
+  /// <summary>Headcount per household for labor and living-capacity math.</summary>
+  public int PeoplePerHousehold { get; init; } = 4;
+
+  /// <summary>Comfort floor per household; invest/lend require budget above floor × count.</summary>
+  public Money HouseholdComfortThresholdPerHousehold { get; init; } = Money.From(50m);
+
+  /// <summary>
+  /// When true (default if any region exists), firm labor supply comes from region household pools.
+  /// </summary>
+  public bool UseRegionLaborPools { get; init; } = true;
 }
 
 /// <summary>Facility binding to firm and inventory locations.</summary>
@@ -130,8 +141,11 @@ public sealed class EconomyWorld
   /// <summary>Firm display names.</summary>
   public Dictionary<FirmId, string> Firms { get; } = new();
 
-  /// <summary>Legal-entity metadata keyed by firm id (Firm / Civic).</summary>
+  /// <summary>Legal-entity metadata keyed by firm id (Firm / Civic / Household).</summary>
   public Dictionary<FirmId, LegalEntity> Entities { get; } = new();
+
+  /// <summary>Habitat/regions keyed by area.</summary>
+  public Dictionary<GeographicAreaId, EconomicRegion> Regions { get; } = new();
 
   /// <summary>Ledgers by firm.</summary>
   public Dictionary<FirmId, FirmLedger> Ledgers { get; } = new();
@@ -246,6 +260,20 @@ public sealed class EconomyWorld
     return entity;
   }
 
+  /// <summary>Ensures a household party (ledger present; spendable cash is cohort budget).</summary>
+  public LegalEntity EnsureHousehold(FirmId firmId, string name)
+  {
+    EnsureFirm(firmId, name);
+    var entity = new LegalEntity(firmId, LegalEntityKind.Household);
+    Entities[firmId] = entity;
+    AvailableLaborHours[firmId] = 0m;
+    return entity;
+  }
+
+  /// <summary>Whether the id is a household legal entity.</summary>
+  public bool IsHousehold(FirmId firmId) =>
+    Entities.TryGetValue(firmId, out var e) && e.Kind == LegalEntityKind.Household;
+
   /// <summary>Whether the firm may issue ownership shares.</summary>
   public bool CanIssueShares(FirmId firmId) =>
     Entities.TryGetValue(firmId, out var e) && e.CanIssueShares;
@@ -253,6 +281,74 @@ public sealed class EconomyWorld
   /// <summary>Whether the firm is credit-frozen.</summary>
   public bool IsCreditFrozen(FirmId firmId) =>
     Entities.TryGetValue(firmId, out var e) && e.CreditFrozen;
+
+  /// <summary>Households currently living in an area.</summary>
+  public int UsedLivingHouseholds(GeographicAreaId area) =>
+    Cohorts
+      .Where(c => c.Definition.Area.Equals(area))
+      .Sum(c => HouseholdMath.Count(c.Definition.Population, Policy.PeoplePerHousehold));
+
+  /// <summary>Mfg/assembly facilities in an area.</summary>
+  public int UsedProductionSlots(GeographicAreaId area) =>
+    Facilities.Values.Count(f =>
+      f.Area is { } a
+      && a.Equals(area)
+      && EconomicRegion.ConsumesProductionSlot(f.Layout));
+
+  /// <summary>Whether region labor pools should drive firm availability.</summary>
+  public bool RegionLaborPoolsActive =>
+    Policy.UseRegionLaborPools && Regions.Count > 0;
+
+  /// <summary>Cohort linked to a household firm id, if any.</summary>
+  public CohortState? FindCohortByHousehold(FirmId householdFirmId) =>
+    Cohorts.FirstOrDefault(c =>
+      c.Definition.HouseholdFirmId is { } hid && hid.Equals(householdFirmId));
+
+  /// <summary>Comfort floor for a cohort under current policy.</summary>
+  public Money ComfortFloor(CohortState cohort) =>
+    HouseholdMath.ComfortFloor(
+      cohort.Definition.Population,
+      Policy.HouseholdComfortThresholdPerHousehold,
+      Policy.PeoplePerHousehold);
+
+  /// <summary>True when budget is strictly above the comfort floor.</summary>
+  public bool IsAboveComfort(CohortState cohort) =>
+    cohort.BudgetRemaining.Amount > ComfortFloor(cohort).Amount;
+
+  /// <summary>Debits household cohort budget; returns false if insufficient.</summary>
+  public bool TryDebitHouseholdBudget(FirmId householdFirmId, Money amount)
+  {
+    if (amount.Amount <= 0m)
+    {
+      return true;
+    }
+
+    var cohort = FindCohortByHousehold(householdFirmId);
+    if (cohort is null || cohort.BudgetRemaining.Amount + 0.0000001m < amount.Amount)
+    {
+      return false;
+    }
+
+    cohort.BudgetRemaining = Money.From(cohort.BudgetRemaining.Amount - amount.Amount);
+    return true;
+  }
+
+  /// <summary>Credits household cohort budget.</summary>
+  public void CreditHouseholdBudget(FirmId householdFirmId, Money amount)
+  {
+    if (amount.Amount <= 0m)
+    {
+      return;
+    }
+
+    var cohort = FindCohortByHousehold(householdFirmId);
+    if (cohort is null)
+    {
+      return;
+    }
+
+    cohort.BudgetRemaining = Money.From(cohort.BudgetRemaining.Amount + amount.Amount);
+  }
 
   /// <summary>Retail facility map for demand (includes optional area for local clearing).</summary>
   public Dictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation, GeographicAreaId? Area)> RetailFacilityMap()

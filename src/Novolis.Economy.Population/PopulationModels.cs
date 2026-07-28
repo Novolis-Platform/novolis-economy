@@ -27,15 +27,19 @@ public sealed record PreferenceProfile(
   decimal QualitySensitivity,
   decimal BrandLoyalty);
 
-/// <summary>Aggregated consumer segment.</summary>
+/// <summary>Aggregated consumer segment (household sector at region resolution).</summary>
 /// <param name="Id">Cohort id.</param>
 /// <param name="Population">Headcount.</param>
-/// <param name="DisposableIncome">Per-period disposable income stub.</param>
+/// <param name="DisposableIncome">Per-period disposable income stub / opening budget seed.</param>
 /// <param name="Preferences">Preference profile.</param>
-/// <param name="Area">Home geographic area.</param>
+/// <param name="Area">Home geographic area (habitat/region).</param>
+/// <param name="Productivity">Productive hours setting (12/18/24 per household-day).</param>
+/// <param name="HouseholdFirmId">Linked <see cref="LegalEntityKind.Household"/> party id.</param>
 public sealed record ConsumerCohort(
   ConsumerCohortId Id,
   PopulationCount Population,
   Money DisposableIncome,
   PreferenceProfile Preferences,
-  GeographicAreaId Area);
+  GeographicAreaId Area,
+  HouseholdProductivityKind Productivity = HouseholdProductivityKind.Mean,
+  FirmId? HouseholdFirmId = null);
