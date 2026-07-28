@@ -287,7 +287,8 @@ public sealed class CarrierFirmAgent : IEconomicAgent
       var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
       var cog = _policy.GatePrice(sku);
       var margin = qty * buy.LimitPrice.Amount - qty * cog - est.TotalVariableCost.Amount;
-      if (margin < _policy.MinMargin)
+      // Holding cargo: accept any non-negative Δ so a hull is not trapped posting local offers forever.
+      if (margin < 0m)
       {
         continue;
       }
@@ -311,74 +312,93 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     var world = context.World;
     var wage = world.Policy.WageRatePerHour;
     var fuelCost = world.TransportFuelUnitCost;
-    var sells = new List<HubOrder>(32);
+    var freight = _policy.FreightProducts;
+    var sellsByProduct = new Dictionary<ProductId, List<HubOrder>>();
     var buysByProduct = new Dictionary<ProductId, List<HubOrder>>();
     foreach (var o in world.HubOrders)
     {
-      if (o.IsFilled || o.FirmId.Equals(FirmId))
+      if (o.IsFilled || o.FirmId.Equals(FirmId) || !freight.Any(p => p.Equals(o.ProductId)))
       {
         continue;
       }
 
       if (o.Side == HubOrderSide.Sell)
       {
-        if (sells.Count < 40)
+        if (!sellsByProduct.TryGetValue(o.ProductId, out var sells))
         {
-          sells.Add(o);
+          sells = new List<HubOrder>(16);
+          sellsByProduct[o.ProductId] = sells;
         }
+
+        sells.Add(o);
       }
       else
       {
-        if (!buysByProduct.TryGetValue(o.ProductId, out var list))
+        if (!buysByProduct.TryGetValue(o.ProductId, out var buys))
         {
-          list = new List<HubOrder>(8);
-          buysByProduct[o.ProductId] = list;
+          buys = new List<HubOrder>(16);
+          buysByProduct[o.ProductId] = buys;
         }
 
-        if (list.Count < 24)
-        {
-          list.Add(o);
-        }
+        buys.Add(o);
       }
     }
 
     var jobs = new List<SpreadJob>();
-    foreach (var sell in sells)
+    foreach (var (product, rawSells) in sellsByProduct)
     {
-      if (!buysByProduct.TryGetValue(sell.ProductId, out var buys)
-          || !_siteByLoc.TryGetValue(sell.LocationId, out var origin)
-          || origin.HubId is null)
+      if (!buysByProduct.TryGetValue(product, out var rawBuys))
       {
         continue;
       }
 
-      var matched = 0;
-      foreach (var buy in buys)
+      // Prefer deep / cheap sells and rich buys — avoid fuel-noise FIFO truncation.
+      var sells = rawSells
+        .OrderBy(s => s.LimitPrice.Amount)
+        .ThenByDescending(s => s.Remaining.Value)
+        .Take(24)
+        .ToList();
+      var buys = rawBuys
+        .OrderByDescending(b => b.LimitPrice.Amount)
+        .ThenByDescending(b => b.Remaining.Value)
+        .Take(24)
+        .ToList();
+
+      foreach (var sell in sells)
       {
-        if (matched >= 20
-            || buy.LocationId.Equals(sell.LocationId)
-            || buy.LimitPrice.Amount < sell.LimitPrice.Amount
-            || !_siteByLoc.TryGetValue(buy.LocationId, out var dest)
-            || dest.HubId is null)
+        if (!_siteByLoc.TryGetValue(sell.LocationId, out var origin) || origin.HubId is null)
         {
           continue;
         }
 
-        var qty = Math.Min(Math.Min(sell.Remaining.Value, buy.Remaining.Value), _policy.Vehicle.CargoCapacity.Value);
-        if (qty < 2m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, out var itinerary))
+        var matched = 0;
+        foreach (var buy in buys)
         {
-          continue;
-        }
+          if (matched >= 20
+              || buy.LocationId.Equals(sell.LocationId)
+              || buy.LimitPrice.Amount < sell.LimitPrice.Amount
+              || !_siteByLoc.TryGetValue(buy.LocationId, out var dest)
+              || dest.HubId is null)
+          {
+            continue;
+          }
 
-        matched++;
-        var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
-        var lift = Math.Min(buy.LimitPrice.Amount, sell.LimitPrice.Amount * 1.12m);
-        var margin = qty * buy.LimitPrice.Amount - qty * lift - est.TotalVariableCost.Amount;
-        jobs.Add(new SpreadJob(
-          $"{Short(sell.ProductId)} {ShortName(origin.Name)}→{ShortName(dest.Name)}",
-          origin.HubId.Value, dest.HubId.Value, sell.LocationId, dest.LocationId,
-          sell.ProductId, qty, lift, buy.LimitPrice.Amount, margin,
-          $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0}"));
+          var qty = Math.Min(Math.Min(sell.Remaining.Value, buy.Remaining.Value), _policy.Vehicle.CargoCapacity.Value);
+          if (qty < 2m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, out var itinerary))
+          {
+            continue;
+          }
+
+          matched++;
+          var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
+          var lift = Math.Min(buy.LimitPrice.Amount, sell.LimitPrice.Amount * 1.12m);
+          var margin = qty * buy.LimitPrice.Amount - qty * lift - est.TotalVariableCost.Amount;
+          jobs.Add(new SpreadJob(
+            $"{Short(sell.ProductId)} {ShortName(origin.Name)}→{ShortName(dest.Name)}",
+            origin.HubId.Value, dest.HubId.Value, sell.LocationId, dest.LocationId,
+            sell.ProductId, qty, lift, buy.LimitPrice.Amount, margin,
+            $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0}"));
+        }
       }
     }
 
