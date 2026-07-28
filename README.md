@@ -6,7 +6,7 @@
 
 | Package | Install | Package README |
 |---------|---------|----------------|
-| `Novolis.Economy` | `dotnet add package Novolis.Economy` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy/README.md) — **Primitives** |
+| `Novolis.Economy.Core` | `dotnet add package Novolis.Economy.Core` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Core/README.md) — **economic kernel** |
 | `Novolis.Economy.Production` | `dotnet add package Novolis.Economy.Production` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Production/README.md) |
 | `Novolis.Economy.Markets` | `dotnet add package Novolis.Economy.Markets` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Markets/README.md) |
 | `Novolis.Economy.Accounting` | `dotnet add package Novolis.Economy.Accounting` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Accounting/README.md) |
@@ -22,9 +22,11 @@ For NuGet.org and Visual Studio, the **embedded** README.md inside each package 
 
 # novolis-economy
 
-**Headless economic simulation libraries** — layered as **Primitives** (`Novolis.Economy`) → domain engines → **Simulation** composition root (+ Agents).
+**Headless economic simulation libraries** — **`Novolis.Economy.Core`** kernel → ops packages (Production, Logistics, …) → **Simulation** composition root (+ Agents).
 
-Not a game engine and not spatial simulation. Product hosts (for example a future Novolis Commerce app) compose these packages.
+**Breaking:** PackageId `Novolis.Economy` is retired. Replace `PackageReference Include="Novolis.Economy"` with `Novolis.Economy.Core` (see [docs/design.md](docs/design.md)).
+
+Not a game engine and not spatial simulation. Product hosts compose these packages from GitHub Packages (`2026.1.*`).
 
 ## Build
 

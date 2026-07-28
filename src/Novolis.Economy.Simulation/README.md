@@ -2,7 +2,7 @@
 
 Deterministic economic tick runner: `EconomyWorld`, ordered phases, command queue, events, and world fingerprint hash.
 
-Holds collections of `LegalEntity` and `OwnershipClaim` (types defined in **`Novolis.Economy` Primitives**). Does not own those type definitions.
+Holds ops `LegalEntity` collections; `OwnershipClaim` lives in **Accounting**. Economic authority is **`Novolis.Economy.Core`** (`EconomyWorld.CoreState`); period close calls `EconomyEngine.Advance`.
 
 `EconomicRegion` + `AddRegion` / household `AddCohort` living clamp; region labor pools; production slots for mfg/assembly only.
 

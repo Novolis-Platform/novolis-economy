@@ -2,6 +2,13 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Core pivot (breaking)
+
+- **PackageId `Novolis.Economy` retired** (no shim). Consumers must `PackageReference` **`Novolis.Economy.Core`**.
+- Ops packages depend on Core; former prim types live in Production / Logistics / Accounting / Simulation / Population (see [design.md](design.md) type map).
+- Time: hours advance carriage only; `EconomyEngine.Advance` runs at period boundaries via Simulation.
+- Dogfood (`NearSol`, Tramp*, EconomyBoard) and Sins (`Novolis.Economy.Core` only) consume GPR `2026.1.*`.
+
 ## 2026.1.x — Households, regions, labor, comfort
 
 - `LegalEntityKind.Household`; `HouseholdProductivityKind` (12/18/24 hh-hours/day); `PurchaseOwnership`
@@ -9,12 +16,6 @@ Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` 
 - `EconomicRegion` living/production caps; region labor pools; wages by facility area → `BudgetRemaining`
 - Comfort guards on household lend/invest; single spendable wallet (`BudgetRemaining`)
 - `HouseholdFirmAgent`; builder `AddRegion` + living clamp / mfg production slots
-
-## 2026.1.x — Primitives lift
-
-- `LegalEntity` / `OwnershipClaim` and transport hub/corridor/vehicle **IDs** live in `Novolis.Economy` (Primitives package branding)
-- Accounting keeps `OwnershipEngine`; Logistics keeps hub/corridor/vehicle **models**
-- Docs/READMEs/package descriptions clarify Primitives vs composition root (Simulation)
 
 ## 2026.1.x — Legal entity, ownership, capacity, default absorb
 

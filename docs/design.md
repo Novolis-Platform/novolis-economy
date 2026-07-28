@@ -62,7 +62,7 @@ Novolis.Economy.Agents          heuristic agents that enqueue commands (not ML)
 
 - Product catalog and facility layouts
 - Firm ledgers (cash, inventory, revenue, COGS, wages, equity, transport fuel/toll expense)
-- Legal-entity metadata and ownership claims (types from Primitives)
+- Legal-entity metadata and ownership claims (ops types in Simulation / Accounting; BM shares in Core)
 - FIFO inventory lots by `(firm, location, product)`
 - Posted retail prices and production plans
 - Freight routes (compat shim) / hub–corridor graph / vehicle classes / in-flight shipments
