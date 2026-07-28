@@ -287,12 +287,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
       var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
       var cog = _policy.GatePrice(sku);
       var margin = qty * buy.LimitPrice.Amount - qty * cog - est.TotalVariableCost.Amount;
-      // Holding cargo: accept any non-negative Δ so a hull is not trapped posting local offers forever.
-      if (margin < 0m)
-      {
-        continue;
-      }
-
+      // Holding inventory: always consider destinations — even negative Δ — so the hull is not trapped.
       var job = new SpreadJob(
         $"{Short(sku)} {ShortName(origin.Name)}→{ShortName(dest.Name)}",
         origin.HubId.Value, dest.HubId.Value, origin.LocationId, dest.LocationId,
