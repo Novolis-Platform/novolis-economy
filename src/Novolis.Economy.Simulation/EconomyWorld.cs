@@ -8,6 +8,16 @@ using Novolis.Economy.Production;
 
 namespace Novolis.Economy.Simulation;
 
+/// <summary>How cohort budgets behave at accounting period close.</summary>
+public enum CohortBudgetResetMode
+{
+  /// <summary>Remint each cohort to its disposable income (legacy open mint).</summary>
+  MintFromDisposableIncome = 0,
+
+  /// <summary>Leave <c>BudgetRemaining</c> unchanged (closed-loop credit stock).</summary>
+  CarryForward = 1,
+}
+
 /// <summary>Simulation policy knobs.</summary>
 public sealed class EconomyPolicy
 {
@@ -25,6 +35,26 @@ public sealed class EconomyPolicy
 
   /// <summary>Research spend converts to productivity at this rate (per currency unit).</summary>
   public decimal ResearchProductivityPerCurrency { get; init; } = 0.0001m;
+
+  /// <summary>
+  /// When true, paid wages increase cohort <c>BudgetRemaining</c> (population-weighted)
+  /// so household spending power replaces destroyed firm cash.
+  /// Default false preserves legacy wage cash destruction.
+  /// </summary>
+  public bool HouseholdCreditFromWages { get; init; }
+
+  /// <summary>
+  /// Period-close budget policy. Default remints disposable income; use
+  /// <see cref="CohortBudgetResetMode.CarryForward"/> for closed-loop money stock.
+  /// </summary>
+  public CohortBudgetResetMode CohortBudgetResetMode { get; init; } =
+    CohortBudgetResetMode.MintFromDisposableIncome;
+
+  /// <summary>
+  /// When set, corridor tolls debit the shipper and credit this firm's cash/revenue
+  /// (liquid cash conserved). Null keeps legacy “toll burns cash” behavior.
+  /// </summary>
+  public FirmId? TollBeneficiaryFirmId { get; init; }
 }
 
 /// <summary>Facility binding to firm and inventory locations.</summary>

@@ -98,6 +98,18 @@ Ordered phases run every economic hour and mutate the world:
 
 Identical seed + identical command stream + identical initial world must produce identical `SimulationState.Hash` after the same number of ticks. Hash covers clock, RNG, event count, and a world fingerprint (cash/inventory/prices/shipments/cohort budgets).
 
+## Accounting / population — money conservation modes
+
+Defaults preserve the open mint used by tramp / commodity-chain scenarios. Closed-loop polity scenarios opt in via `EconomyPolicy`:
+
+| Knob | Default | Closed-loop |
+|------|---------|-------------|
+| `HouseholdCreditFromWages` | `false` (wage cash leaves the system) | `true` — paid wages raise cohort `BudgetRemaining` (population-weighted); emits `HouseholdCreditsIssued` |
+| `CohortBudgetResetMode` | `MintFromDisposableIncome` | `CarryForward` — period close does not remint budgets |
+| `TollBeneficiaryFirmId` | `null` (toll expense burns cash) | set to a treasury firm — shipper debit + beneficiary cash/revenue |
+
+Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSale` / `PostCashPurchase`); success emits `GoodsSoldInterFirm`, failure emits `TransferGoodsFailed` (`cash` / `stock`).
+
 ## Non-goals
 
 UI/host, AI firm controllers, gamification (XP, morale meters), soft loans/bankruptcy drama, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics.

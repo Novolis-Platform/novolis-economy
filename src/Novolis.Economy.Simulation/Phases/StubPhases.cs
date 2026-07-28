@@ -47,6 +47,9 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case SetAvailableLabor labor:
           world.AvailableLaborHours[labor.FirmId] = labor.HoursPerTick;
           break;
+        case TransferGoodsForCash xfer:
+          TryTransferGoodsForCash(world, context, hour, xfer);
+          break;
         case AccountingPeriodClose:
           // Handled in CloseAccountingPeriodPhase when due; ignore as immediate command.
           break;
@@ -54,6 +57,64 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     }
 
     return ValueTask.CompletedTask;
+  }
+
+  private static void TryTransferGoodsForCash(
+    EconomyWorld world,
+    SimulationContext context,
+    SimulationHour hour,
+    TransferGoodsForCash xfer)
+  {
+    void Fail(string reason) =>
+      context.State.AppendEvent(new TransferGoodsFailed(
+        hour, xfer.SellerFirmId, xfer.BuyerFirmId, xfer.ProductId, reason));
+
+    if (xfer.Quantity.Value <= 0m || xfer.UnitPrice.Amount < 0m)
+    {
+      Fail("invalid");
+      return;
+    }
+
+    if (!world.Ledgers.TryGetValue(xfer.SellerFirmId, out var sellerLedger)
+        || !world.Ledgers.TryGetValue(xfer.BuyerFirmId, out var buyerLedger))
+    {
+      Fail("ledger");
+      return;
+    }
+
+    var spend = Money.From(xfer.Quantity.Value * xfer.UnitPrice.Amount);
+    if (buyerLedger.Cash.Amount + 0.0000001m < spend.Amount)
+    {
+      Fail("cash");
+      return;
+    }
+
+    var sellerKey = new InventoryKey(xfer.SellerFirmId, xfer.LocationId, xfer.ProductId);
+    if (!world.Inventory.TryTake(sellerKey, xfer.Quantity, out var taken, out var cogs))
+    {
+      Fail("stock");
+      return;
+    }
+
+    var buyerKey = new InventoryKey(xfer.BuyerFirmId, xfer.LocationId, xfer.ProductId);
+    foreach (var lot in taken)
+    {
+      world.Inventory.Add(
+        buyerKey,
+        lot with { UnitCost = xfer.UnitPrice });
+    }
+
+    LedgerEngine.PostCashSale(sellerLedger, spend, cogs, hour.Date);
+    LedgerEngine.PostCashPurchase(buyerLedger, spend, hour.Date);
+    context.State.AppendEvent(new GoodsSoldInterFirm(
+      hour,
+      xfer.SellerFirmId,
+      xfer.BuyerFirmId,
+      xfer.LocationId,
+      xfer.ProductId,
+      xfer.Quantity,
+      xfer.UnitPrice,
+      spend));
   }
 }
 
@@ -247,7 +308,26 @@ public sealed class TransportInventoryPhase : ISimulationPhase
         return false;
       }
 
-      return LedgerEngine.TryPostToll(ledger, toll, hour.Date);
+      if (!LedgerEngine.TryPostToll(ledger, toll, hour.Date))
+      {
+        return false;
+      }
+
+      var beneficiary = world.Policy.TollBeneficiaryFirmId;
+      if (beneficiary is { } treasuryId
+          && treasuryId != firmId
+          && toll.Amount > 0m
+          && world.Ledgers.TryGetValue(treasuryId, out var treasury))
+      {
+        treasury.Post(
+          AccountRole.Cash,
+          AccountRole.Revenue,
+          toll,
+          hour.Date,
+          "Corridor toll");
+      }
+
+      return true;
     }
 
     var result = LogisticsEngine.AdvanceHour(
@@ -508,6 +588,12 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
       LedgerEngine.PayWages(ledger, pay, hour.Date);
       world.AccruedWages[firmId] = accrued - pay;
       context.State.AppendEvent(new WagesPaid(hour, firmId, pay));
+
+      if (world.Policy.HouseholdCreditFromWages && pay.Amount > 0m)
+      {
+        DistributeWageCreditsToCohorts(world, pay.Amount);
+        context.State.AppendEvent(new HouseholdCreditsIssued(hour, firmId, pay));
+      }
     }
 
     foreach (var invoice in world.Invoices.Where(i => !i.IsSettled).OrderBy(i => i.Id))
@@ -535,6 +621,50 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
     }
 
     return ValueTask.CompletedTask;
+  }
+
+  /// <summary>Population-weighted split; remainder to largest cohort (stable id tie-break).</summary>
+  internal static void DistributeWageCreditsToCohorts(EconomyWorld world, decimal amount)
+  {
+    if (amount <= 0m || world.Cohorts.Count == 0)
+    {
+      return;
+    }
+
+    var popTotal = world.Cohorts.Sum(c => Math.Max(1, c.Definition.Population.Value));
+    if (popTotal <= 0)
+    {
+      return;
+    }
+
+    var allocated = 0m;
+    var ordered = world.Cohorts
+      .OrderByDescending(c => c.Definition.Population.Value)
+      .ThenBy(c => c.Definition.Id.Value)
+      .ToList();
+
+    for (var i = 0; i < ordered.Count; i++)
+    {
+      var c = ordered[i];
+      decimal share;
+      if (i == ordered.Count - 1)
+      {
+        share = amount - allocated;
+      }
+      else
+      {
+        share = Math.Round(
+          amount * c.Definition.Population.Value / popTotal,
+          4,
+          MidpointRounding.AwayFromZero);
+        allocated += share;
+      }
+
+      if (share > 0m)
+      {
+        c.BudgetRemaining = Money.From(c.BudgetRemaining.Amount + share);
+      }
+    }
   }
 }
 
@@ -599,6 +729,11 @@ public sealed class CloseAccountingPeriodPhase : ISimulationPhase
     foreach (var firmId in world.Firms.Keys.OrderBy(id => id.Value))
     {
       context.State.AppendEvent(new AccountingPeriodClosed(firmId, hour.Date, hour));
+    }
+
+    if (world.Policy.CohortBudgetResetMode == CohortBudgetResetMode.CarryForward)
+    {
+      return ValueTask.CompletedTask;
     }
 
     foreach (var cohort in world.Cohorts)

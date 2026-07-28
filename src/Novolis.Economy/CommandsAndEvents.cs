@@ -183,3 +183,37 @@ public sealed record ProcurementFilled(
   ProductId ProductId,
   Quantity Quantity,
   Money UnitPrice) : IEconomyEvent;
+
+/// <summary>Sell inventory from one firm to another for cash at a shared location.</summary>
+public sealed record TransferGoodsForCash(
+  FirmId SellerFirmId,
+  FirmId BuyerFirmId,
+  InventoryLocationId LocationId,
+  ProductId ProductId,
+  Quantity Quantity,
+  Money UnitPrice) : IEconomyCommand;
+
+/// <summary>Inter-firm goods sale completed (inventory moved; cash posted).</summary>
+public sealed record GoodsSoldInterFirm(
+  SimulationHour Hour,
+  FirmId SellerFirmId,
+  FirmId BuyerFirmId,
+  InventoryLocationId LocationId,
+  ProductId ProductId,
+  Quantity Quantity,
+  Money UnitPrice,
+  Money Revenue) : IEconomyEvent;
+
+/// <summary>Inter-firm goods transfer could not complete.</summary>
+public sealed record TransferGoodsFailed(
+  SimulationHour Hour,
+  FirmId SellerFirmId,
+  FirmId BuyerFirmId,
+  ProductId ProductId,
+  string Reason) : IEconomyEvent;
+
+/// <summary>Wage cash redistributed to household cohort budgets.</summary>
+public sealed record HouseholdCreditsIssued(
+  SimulationHour Hour,
+  FirmId FirmId,
+  Money Amount) : IEconomyEvent;

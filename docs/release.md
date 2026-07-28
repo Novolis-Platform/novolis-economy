@@ -2,6 +2,13 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Closed-loop credits + inter-firm transfer
+
+- Policy: `HouseholdCreditFromWages`, `CohortBudgetResetMode` (`MintFromDisposableIncome` | `CarryForward`), `TollBeneficiaryFirmId`
+- Wage settlement may credit household cohorts (`HouseholdCreditsIssued`)
+- `TransferGoodsForCash` / `GoodsSoldInterFirm` / `TransferGoodsFailed` for firm↔firm inventory+cash
+- Optional toll treasury credit (payer expense ↔ beneficiary revenue)
+
 ## 2026.1.x — Economic transport
 
 - Hub / corridor / vehicle-class transport network (geography-agnostic)
