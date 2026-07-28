@@ -13,6 +13,9 @@ public sealed class InventoryStore
 {
   private readonly Dictionary<InventoryKey, List<ProductBatch>> _lots = new();
 
+  /// <summary>Optional soft/hard warehouse caps (location × product).</summary>
+  public InventoryStoreLimits Limits { get; } = new();
+
   /// <summary>All keys currently holding stock.</summary>
   public IEnumerable<InventoryKey> Keys => _lots.Keys;
 
@@ -37,12 +40,35 @@ public sealed class InventoryStore
   public IReadOnlyList<ProductBatch> GetLots(InventoryKey key) =>
     _lots.TryGetValue(key, out var lots) ? lots : Array.Empty<ProductBatch>();
 
-  /// <summary>Adds a lot (merges into list).</summary>
-  public void Add(InventoryKey key, ProductBatch batch)
+  /// <summary>
+  /// Adds a lot. When <see cref="Limits"/> has a hard cap for (location, product),
+  /// only the residual room (location-total across firms) is accepted.
+  /// </summary>
+  /// <param name="key">Firm / location / product slot.</param>
+  /// <param name="batch">Lot to stock.</param>
+  /// <param name="bypassLimits">Seed / test path — ignore hard caps.</param>
+  /// <returns>Quantity actually stocked.</returns>
+  public Quantity Add(InventoryKey key, ProductBatch batch, bool bypassLimits = false)
   {
     if (batch.Quantity.Value <= 0m)
     {
-      return;
+      return Quantity.Zero;
+    }
+
+    var qty = batch.Quantity.Value;
+    if (!bypassLimits && Limits.TryGetHard(key.LocationId, key.ProductId, out _))
+    {
+      var room = Limits.Room(this, key.LocationId, key.ProductId);
+      if (room <= 0m)
+      {
+        return Quantity.Zero;
+      }
+
+      if (qty > room)
+      {
+        qty = room;
+        batch = batch with { Quantity = Quantity.From(qty) };
+      }
     }
 
     if (!_lots.TryGetValue(key, out var lots))
@@ -52,6 +78,7 @@ public sealed class InventoryStore
     }
 
     lots.Add(batch);
+    return Quantity.From(qty);
   }
 
   /// <summary>Removes quantity FIFO; returns removed lots (possibly partial last lot) and total cost.</summary>

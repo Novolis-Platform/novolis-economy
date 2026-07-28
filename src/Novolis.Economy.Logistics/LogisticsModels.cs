@@ -179,7 +179,7 @@ public sealed class ActiveShipment
   public ProductId ProductId { get; }
 
   /// <summary>Cargo quantity.</summary>
-  public Quantity Quantity { get; }
+  public Quantity Quantity { get; set; }
 
   /// <summary>Cargo unit cost.</summary>
   public Money UnitCost { get; }

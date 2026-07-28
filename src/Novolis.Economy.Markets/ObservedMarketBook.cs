@@ -7,6 +7,29 @@ public sealed class ObservedMarketBook
 {
   private readonly Dictionary<ProductId, MarketTape> _tape = new();
 
+  /// <summary>Products with at least one recorded trade.</summary>
+  public IReadOnlyCollection<ProductId> ProductIds => _tape.Keys.ToList();
+
+  /// <summary>Try read observed tape for a product.</summary>
+  public bool TryGetTape(ProductId productId, out MarketTapeSnapshot snapshot)
+  {
+    if (!_tape.TryGetValue(productId, out var tape) || tape.TradeCount == 0)
+    {
+      snapshot = default;
+      return false;
+    }
+
+    snapshot = new MarketTapeSnapshot(
+      productId,
+      tape.LastPrice,
+      tape.PreviousPrice,
+      tape.LastQuantity,
+      tape.CumulativeVolume,
+      tape.LastHour,
+      tape.TradeCount);
+    return true;
+  }
+
   /// <summary>Records a trade.</summary>
   public void RecordTrade(ProductId productId, Quantity quantity, Money unitPrice, SimulationHour hour)
   {
@@ -105,3 +128,13 @@ public sealed class ObservedMarketBook
       book.Estimate(ProductId.From(Guid.Empty), metric, requestArea.Value == Guid.Empty ? area : requestArea, SimulationDate.Epoch);
   }
 }
+
+/// <summary>Public read model for one product's observed tape.</summary>
+public readonly record struct MarketTapeSnapshot(
+  ProductId ProductId,
+  Money LastPrice,
+  Money PreviousPrice,
+  Quantity LastQuantity,
+  Quantity CumulativeVolume,
+  SimulationHour LastHour,
+  int TradeCount);

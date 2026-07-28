@@ -94,7 +94,7 @@ public sealed class EconomyWorldBuilder
     InventoryLocationId location,
     ProductBatch batch)
   {
-    _world.Inventory.Add(new InventoryKey(firmId, location, batch.ProductId), batch);
+    _world.Inventory.Add(new InventoryKey(firmId, location, batch.ProductId), batch, bypassLimits: true);
     if (_world.Ledgers.TryGetValue(firmId, out var ledger))
     {
       ledger.SeedInventory(Money.From(batch.UnitCost.Amount * batch.Quantity.Value), batch.ProducedAt);

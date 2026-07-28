@@ -484,7 +484,7 @@ public static class LogisticsEngine
       return;
     }
 
-    inventory.Add(
+    var accepted = inventory.Add(
       new InventoryKey(shipment.FirmId, route.Destination, shipment.ProductId),
       new ProductBatch(
         shipment.ProductId,
@@ -493,6 +493,11 @@ public static class LogisticsEngine
         shipment.UnitCost,
         shipment.DepartedAt.Date,
         BrandId: null));
+    if (accepted.Value < shipment.Quantity.Value)
+    {
+      shipment.Quantity = accepted;
+    }
+
     shipment.Status = ShipmentStatus.Delivered;
     shipment.Phase = ShipmentPhase.Delivered;
     delivered.Add(shipment);
@@ -505,8 +510,21 @@ public static class LogisticsEngine
     List<ActiveShipment> delivered)
   {
     var hub = hubs[shipment.CurrentHubId];
-    inventory.Add(
-      new InventoryKey(shipment.FirmId, hub.LocationId, shipment.ProductId),
+    var key = new InventoryKey(shipment.FirmId, hub.LocationId, shipment.ProductId);
+    // Hard store-limit: wait in unload rather than destroy cargo.
+    if (inventory.Limits.TryGetHard(hub.LocationId, shipment.ProductId, out _))
+    {
+      var room = inventory.Limits.Room(inventory, hub.LocationId, shipment.ProductId);
+      if (room + 0.0000001m < shipment.Quantity.Value)
+      {
+        shipment.Phase = ShipmentPhase.Unloading;
+        shipment.SegmentHoursRemaining = Math.Max(1, hub.DwellHours);
+        return;
+      }
+    }
+
+    var accepted = inventory.Add(
+      key,
       new ProductBatch(
         shipment.ProductId,
         shipment.Quantity,
@@ -514,6 +532,13 @@ public static class LogisticsEngine
         shipment.UnitCost,
         shipment.DepartedAt.Date,
         BrandId: null));
+    if (accepted.Value + 0.0000001m < shipment.Quantity.Value)
+    {
+      shipment.Phase = ShipmentPhase.Unloading;
+      shipment.SegmentHoursRemaining = Math.Max(1, hub.DwellHours);
+      return;
+    }
+
     shipment.Status = ShipmentStatus.Delivered;
     shipment.Phase = ShipmentPhase.Delivered;
     delivered.Add(shipment);

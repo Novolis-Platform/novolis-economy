@@ -41,6 +41,14 @@ public sealed record PlaceProcurementOrder(
   Quantity Quantity,
   Money MaxUnitPrice) : IEconomyCommand;
 
+/// <summary>Sell inventory into the exogenous export market (infinite demand at the stated unit price floor).</summary>
+public sealed record PlaceExportOrder(
+  FirmId SellerFirmId,
+  InventoryLocationId Origin,
+  ProductId ProductId,
+  Quantity Quantity,
+  Money MinUnitPrice) : IEconomyCommand;
+
 /// <summary>Issue a shipment along a freight route.</summary>
 public sealed record IssueShipment(
   FirmId FirmId,
@@ -183,6 +191,15 @@ public sealed record ProcurementFilled(
   ProductId ProductId,
   Quantity Quantity,
   Money UnitPrice) : IEconomyEvent;
+
+/// <summary>Export filled into exogenous demand (inventory removed; cash credited).</summary>
+public sealed record ExportFilled(
+  SimulationHour Hour,
+  FirmId FirmId,
+  ProductId ProductId,
+  Quantity Quantity,
+  Money UnitPrice,
+  Money Revenue) : IEconomyEvent;
 
 /// <summary>Sell inventory from one firm to another for cash at a shared location.</summary>
 public sealed record TransferGoodsForCash(

@@ -40,6 +40,9 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case PlaceProcurementOrder order:
           world.PendingProcurement.Add(order);
           break;
+        case PlaceExportOrder export:
+          world.PendingExports.Add(export);
+          break;
         case IssueShipment shipment:
           world.PendingShipments.Add(shipment);
           break;
@@ -617,8 +620,8 @@ public sealed class AcquireInputsPhase : ISimulationPhase
 
       var quantity = Quantity.From(qty);
       var spend = Money.From(order.MaxUnitPrice.Amount * qty);
-      LedgerEngine.PostCashPurchase(ledger, spend, hour.Date);
-      world.Inventory.Add(
+      // Stock first under hard caps; only pay for what fits.
+      var accepted = world.Inventory.Add(
         new InventoryKey(order.BuyerFirmId, order.Destination, order.ProductId),
         new ProductBatch(
           order.ProductId,
@@ -627,13 +630,51 @@ public sealed class AcquireInputsPhase : ISimulationPhase
           order.MaxUnitPrice,
           hour.Date,
           BrandId: null));
+      if (accepted.Value <= 0m)
+      {
+        continue;
+      }
+
+      spend = Money.From(order.MaxUnitPrice.Amount * accepted.Value);
+      LedgerEngine.PostCashPurchase(ledger, spend, hour.Date);
       context.State.AppendEvent(new ProcurementFilled(
-        hour, order.BuyerFirmId, order.ProductId, quantity, order.MaxUnitPrice));
+        hour, order.BuyerFirmId, order.ProductId, accepted, order.MaxUnitPrice));
       context.State.AppendEvent(new InventoryTransferred(
-        hour, order.BuyerFirmId, order.ProductId, quantity, "exogenous-procurement"));
+        hour, order.BuyerFirmId, order.ProductId, accepted, "exogenous-procurement"));
     }
 
     world.PendingProcurement.Clear();
+
+    foreach (var order in world.PendingExports.OrderBy(o => o.SellerFirmId.Value).ThenBy(o => o.ProductId.Value))
+    {
+      if (!world.Ledgers.TryGetValue(order.SellerFirmId, out var ledger))
+      {
+        continue;
+      }
+
+      var key = new InventoryKey(order.SellerFirmId, order.Origin, order.ProductId);
+      var onHand = world.Inventory.GetQuantity(key);
+      var qty = Math.Min(order.Quantity.Value, onHand.Value);
+      if (qty <= 0m || order.MinUnitPrice.Amount < 0m)
+      {
+        continue;
+      }
+
+      var quantity = Quantity.From(qty);
+      if (!world.Inventory.TryTake(key, quantity, out _, out var cogs))
+      {
+        continue;
+      }
+
+      var revenue = Money.From(order.MinUnitPrice.Amount * qty);
+      LedgerEngine.PostCashSale(ledger, revenue, cogs, hour.Date);
+      context.State.AppendEvent(new ExportFilled(
+        hour, order.SellerFirmId, order.ProductId, quantity, order.MinUnitPrice, revenue));
+      context.State.AppendEvent(new InventoryTransferred(
+        hour, order.SellerFirmId, order.ProductId, quantity, "exogenous-export"));
+    }
+
+    world.PendingExports.Clear();
 
     foreach (var cmd in world.PendingShipments.OrderBy(s => s.FirmId.Value).ThenBy(s => s.ProductId.Value))
     {

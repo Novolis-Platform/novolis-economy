@@ -197,6 +197,65 @@ public static class EconomyStateExtensions
     public static IReadOnlyList<CohortInsight> CohortInsights(this EconomyState state) =>
         state.Cohorts.Values.Select(c => c.ToInsight()).ToList();
 
+    /// <summary>Last-period flow ledger as a structured insight.</summary>
+    public static PeriodFlowInsight FlowInsight(this EconomyState state)
+    {
+        var f = state.Flows;
+        return new PeriodFlowInsight(
+            f.MoneyCreated,
+            f.MoneyDestroyed,
+            f.NetMoneyCreated,
+            f.CashMoved,
+            f.ObligationsPaid,
+            f.TaxCollected,
+            f.TransfersPaid,
+            f.ProductionOutputValue,
+            f.WagesAccrued);
+    }
+
+    /// <summary>Obligation book: counts, sums, due-now, pending by kind.</summary>
+    public static ObligationBookInsight ObligationBook(this EconomyState state)
+    {
+        var obs = state.Obligations;
+        Money SumStatus(ObligationStatus s) =>
+            Money.From(obs.Where(o => o.Status == s).Sum(o => o.Amount.Amount));
+
+        var pendingByKind = obs
+            .Where(o => o.Status == ObligationStatus.Pending)
+            .GroupBy(o => o.Kind)
+            .ToDictionary(g => g.Key, g => Money.From(g.Sum(o => o.Amount.Amount)));
+
+        var dueNow = Money.From(
+            obs.Where(o => o.Status == ObligationStatus.Pending && o.DuePeriod <= state.Period)
+                .Sum(o => o.Amount.Amount));
+
+        return new ObligationBookInsight(
+            PendingCount: obs.Count(o => o.Status == ObligationStatus.Pending),
+            DelinquentCount: obs.Count(o => o.Status == ObligationStatus.Delinquent),
+            DefaultedCount: obs.Count(o => o.Status == ObligationStatus.Defaulted),
+            PaidCount: obs.Count(o => o.Status == ObligationStatus.Paid),
+            PendingSum: SumStatus(ObligationStatus.Pending),
+            DelinquentSum: SumStatus(ObligationStatus.Delinquent),
+            DueNow: dueNow,
+            PendingSumByKind: pendingByKind);
+    }
+
+    /// <summary>Credit facilities + loan status book.</summary>
+    public static CreditBookInsight CreditBook(this EconomyState state)
+    {
+        var facilities = state.CreditFacilities.Values.ToList();
+        var loans = state.Loans.Values.ToList();
+        return new CreditBookInsight(
+            FacilityCount: facilities.Count,
+            FacilityLimitTotal: Money.From(facilities.Sum(f => f.Limit.Amount)),
+            FacilityDrawnTotal: Money.From(facilities.Sum(f => f.Drawn.Amount)),
+            UndrawnCommitted: state.UndrawnCommittedCredit(),
+            PerformingLoans: loans.Count(l => l.Status == LoanStatus.Performing),
+            DelinquentLoans: loans.Count(l => l.Status == LoanStatus.Delinquent),
+            DefaultedLoans: loans.Count(l => l.Status == LoanStatus.Defaulted),
+            LoanPrincipalOutstanding: state.LoanPrincipalOutstanding());
+    }
+
     private static decimal Utilization(decimal used, decimal capacity) =>
         capacity <= 0m ? (used > 0m ? 1m : 0m) : Math.Clamp(used / capacity, 0m, decimal.MaxValue);
 }

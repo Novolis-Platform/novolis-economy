@@ -1,6 +1,7 @@
 using Novolis.Economy.Core;
 using Novolis.Economy.Core.Extensions;
 using Novolis.Economy.Core.Finance;
+using Novolis.Economy.Core.Holdings;
 using CoreMoney = Novolis.Economy.Core.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
@@ -66,6 +67,72 @@ public sealed class EconomyCoreExtensionsTests
 
         await Assert.That(insight.TotalCash.Amount).IsEqualTo(100m);
         await Assert.That(insight.EffectiveLaborHours).IsEqualTo(120m);
+    }
+
+    [Test]
+    public async Task FlowInsight_ObligationBook_CreditBook_Report()
+    {
+        var state = ExtensionFixtures.Mixed();
+        state = state with
+        {
+            Flows = PeriodFlowLedger.Empty
+                .RecordMoneyCreated(CoreMoney.From(5m))
+                .RecordWages(CoreMoney.From(2m))
+        };
+
+        var flows = state.FlowInsight();
+        await Assert.That(flows.MoneyCreated.Amount).IsEqualTo(5m);
+        await Assert.That(flows.WagesAccrued.Amount).IsEqualTo(2m);
+        await Assert.That(flows.NetMoneyCreated.Amount).IsEqualTo(5m);
+
+        var credit = state.CreditBook();
+        await Assert.That(credit.PerformingLoans).IsEqualTo(1);
+        await Assert.That(credit.LoanPrincipalOutstanding.Amount).IsEqualTo(25m);
+
+        var minsky = ExtensionFixtures.Minsky();
+        var ob = minsky.ObligationBook();
+        await Assert.That(ob.PendingCount).IsEqualTo(1);
+        await Assert.That(ob.DueNow.Amount).IsEqualTo(100m);
+        await Assert.That(ob.PendingSumByKind[CoreObligationKind.Wage].Amount).IsEqualTo(100m);
+    }
+
+    [Test]
+    public async Task ProjectedAccounts_ValuesHoldingsAndSectors()
+    {
+        var state = ExtensionFixtures.Mixed();
+        var ore = ResourceId.From(Guid.Parse("e4000000-0000-0000-0000-000000000001"));
+        state = state with
+        {
+            Resources = new Dictionary<ResourceId, Resource>
+            {
+                [ore] = new Resource(ore, "Ore", ResourceKind.IntermediateGood)
+            },
+            Holdings = new Dictionary<string, ResourceHolding>
+            {
+                [HoldingLedger.Key(ExtensionFixtures.FirmId, ExtensionFixtures.RegionA, ore)] =
+                    new ResourceHolding(ExtensionFixtures.FirmId, ExtensionFixtures.RegionA, ore, 10m)
+            },
+            PostedPrices = new Dictionary<string, PostedPrice>
+            {
+                [EconomyState.PriceKey(ExtensionFixtures.RegionA, ore)] =
+                    new PostedPrice(ExtensionFixtures.RegionA, ore, CoreMoney.From(3m))
+            }
+        };
+
+        var firmBooks = state.ProjectedBooks(ExtensionFixtures.FirmId);
+        await Assert.That(firmBooks.HoldingsValued.Amount).IsEqualTo(30m);
+        await Assert.That(firmBooks.Cash.Amount).IsEqualTo(100m);
+        await Assert.That(firmBooks.DepositsHeld.Amount).IsEqualTo(25m);
+        await Assert.That(firmBooks.LoansPayable.Amount).IsEqualTo(25m);
+
+        var bankBooks = state.ProjectedBooks(ExtensionFixtures.BankId);
+        await Assert.That(bankBooks.DepositLiabilities.Amount).IsEqualTo(25m);
+        await Assert.That(bankBooks.LoansReceivable.Amount).IsEqualTo(25m);
+
+        var snap = state.ProjectedAccounts();
+        await Assert.That(snap.Sectors.Any(s => s.Kind == CoreEntityKind.Firm)).IsTrue();
+        await Assert.That(snap.AggregateHoldingsUnpricedQuantity).IsEqualTo(0m);
+        await Assert.That(snap.LastPeriod.WagesAccrued.Amount).IsEqualTo(0m);
     }
 }
 

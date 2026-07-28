@@ -70,3 +70,37 @@ public sealed record CohortInsight(
     HouseholdLaborKind LaborKind,
     decimal LaborQuality,
     LegalEntityId? HouseholdEntityId);
+
+/// <summary>Last-period flow pulse (SPEC §18). Horizon totals belong in host runners.</summary>
+public sealed record PeriodFlowInsight(
+    Money MoneyCreated,
+    Money MoneyDestroyed,
+    Money NetMoneyCreated,
+    Money CashMoved,
+    Money ObligationsPaid,
+    Money TaxCollected,
+    Money TransfersPaid,
+    Money ProductionOutputValue,
+    Money WagesAccrued);
+
+/// <summary>Obligation book by status and kind.</summary>
+public sealed record ObligationBookInsight(
+    int PendingCount,
+    int DelinquentCount,
+    int DefaultedCount,
+    int PaidCount,
+    Money PendingSum,
+    Money DelinquentSum,
+    Money DueNow,
+    IReadOnlyDictionary<ObligationKind, Money> PendingSumByKind);
+
+/// <summary>Credit facilities and loan book.</summary>
+public sealed record CreditBookInsight(
+    int FacilityCount,
+    Money FacilityLimitTotal,
+    Money FacilityDrawnTotal,
+    Money UndrawnCommitted,
+    int PerformingLoans,
+    int DelinquentLoans,
+    int DefaultedLoans,
+    Money LoanPrincipalOutstanding);

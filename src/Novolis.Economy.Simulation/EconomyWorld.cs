@@ -190,6 +190,9 @@ public sealed class EconomyWorld
   /// <summary>Pending procurement orders.</summary>
   public List<PlaceProcurementOrder> PendingProcurement { get; } = [];
 
+  /// <summary>Pending export orders (exogenous demand).</summary>
+  public List<PlaceExportOrder> PendingExports { get; } = [];
+
   /// <summary>Pending shipment commands.</summary>
   public List<IssueShipment> PendingShipments { get; } = [];
 
