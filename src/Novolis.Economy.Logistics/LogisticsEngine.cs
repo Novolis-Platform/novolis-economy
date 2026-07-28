@@ -43,6 +43,7 @@ public static class LogisticsEngine
 
   /// <summary>
   /// Multi-leg: pull cargo at origin hub, begin loading dwell, bunker for first leg when fuel is configured.
+  /// Pass quantity zero for empty reposition (no inventory take).
   /// </summary>
   public static ActiveShipment? TryDepartItinerary(
     InventoryStore inventory,
@@ -82,13 +83,18 @@ public static class LogisticsEngine
     }
 
     var cargoKey = new InventoryKey(firmId, originHub.LocationId, productId);
-    if (!inventory.TryTake(cargoKey, quantity, out _, out var totalCost) || quantity.Value <= 0m)
+    Money totalCost = Money.Zero;
+    if (quantity.Value > 0m)
     {
-      failReason = "cargo-unavailable";
-      return null;
+      if (!inventory.TryTake(cargoKey, quantity, out _, out totalCost))
+      {
+        failReason = "cargo-unavailable";
+        return null;
+      }
+
+      unitCost = Money.From(totalCost.Amount / quantity.Value);
     }
 
-    unitCost = Money.From(totalCost.Amount / quantity.Value);
     var shipment = new ActiveShipment(
       ShipmentId.From(CreateShipmentGuid(firmId, now, productId, quantity)),
       firmId,
@@ -113,15 +119,19 @@ public static class LogisticsEngine
       var needed = ItineraryPlanner.FuelBurnForLeg(firstCorridor, vehicle, profile);
       if (!TryBunker(inventory, firmId, originHub, fuelId, needed, vehicle, shipment, out _))
       {
-        inventory.Add(
-          cargoKey,
-          new ProductBatch(
-            productId,
-            quantity,
-            new ProductQuality(100m),
-            unitCost,
-            now.Date,
-            BrandId: null));
+        if (quantity.Value > 0m)
+        {
+          inventory.Add(
+            cargoKey,
+            new ProductBatch(
+              productId,
+              quantity,
+              new ProductQuality(100m),
+              unitCost,
+              now.Date,
+              BrandId: null));
+        }
+
         failReason = "fuel-unavailable";
         return null;
       }
@@ -529,6 +539,15 @@ public static class LogisticsEngine
     IReadOnlyDictionary<TransportHubId, TransportHub> hubs,
     List<ActiveShipment> delivered)
   {
+    if (shipment.Quantity.Value <= 0m)
+    {
+      // Empty reposition — arrive with no cargo to unload.
+      shipment.Status = ShipmentStatus.Delivered;
+      shipment.Phase = ShipmentPhase.Delivered;
+      delivered.Add(shipment);
+      return;
+    }
+
     var hub = hubs[shipment.CurrentHubId];
     var key = new InventoryKey(shipment.FirmId, hub.LocationId, shipment.ProductId);
     // Hard store-limit: wait in unload rather than destroy cargo.

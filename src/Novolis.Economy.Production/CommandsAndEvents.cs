@@ -69,6 +69,17 @@ public sealed record PlanShipment(
   Guid VehicleClassId,
   int TransitProfileCode = 1) : IEconomyCommand;
 
+/// <summary>
+/// Empty-hull reposition between hubs (no cargo). Still burns fuel, tolls, and drive wear.
+/// <paramref name="TransitProfileCode"/> matches <see cref="PlanShipment"/>.
+/// </summary>
+public sealed record PlanReposition(
+  FirmId FirmId,
+  Guid OriginHubId,
+  Guid DestinationHubId,
+  Guid VehicleClassId,
+  int TransitProfileCode = 1) : IEconomyCommand;
+
 /// <summary>Set available labor hours per firm per tick.</summary>
 public sealed record SetAvailableLabor(
   FirmId FirmId,

@@ -49,6 +49,9 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case PlanShipment plan:
           world.PendingPlanShipments.Add(plan);
           break;
+        case PlanReposition reposition:
+          world.PendingPlanRepositions.Add(reposition);
+          break;
         case SetAvailableLabor labor:
           world.AvailableLaborHours[labor.FirmId] = labor.HoursPerTick;
           break;
@@ -753,6 +756,66 @@ public sealed class AcquireInputsPhase : ISimulationPhase
     }
 
     world.PendingPlanShipments.Clear();
+
+    // Sentinel product for empty-hold reposition events (no inventory).
+    var emptyHold = LogisticsProductIds.EmptyHold;
+    foreach (var cmd in world.PendingPlanRepositions.OrderBy(s => s.FirmId.Value))
+    {
+      var originId = TransportHubId.From(cmd.OriginHubId);
+      var destId = TransportHubId.From(cmd.DestinationHubId);
+      var vehicleId = VehicleClassId.From(cmd.VehicleClassId);
+      if (!world.Hubs.TryGetValue(originId, out var origin) ||
+          !world.Hubs.ContainsKey(destId) ||
+          !world.VehicleClasses.TryGetValue(vehicleId, out var vehicle))
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(hour, cmd.FirmId, emptyHold, "unknown-hub-or-vehicle"));
+        continue;
+      }
+
+      var qty = Quantity.Zero;
+      if (!ItineraryPlanner.TryPlan(
+            originId,
+            destId,
+            qty,
+            vehicle,
+            world.Corridors,
+            out var itinerary,
+            TransitProfiles.FromCode(cmd.TransitProfileCode)))
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(hour, cmd.FirmId, emptyHold, "no-feasible-path"));
+        continue;
+      }
+
+      var shipment = LogisticsEngine.TryDepartItinerary(
+        world.Inventory,
+        cmd.FirmId,
+        origin,
+        itinerary,
+        vehicle,
+        emptyHold,
+        qty,
+        world.TransportFuelProductId,
+        hour,
+        world.Corridors,
+        out _,
+        out var failReason,
+        TransitProfiles.FromCode(cmd.TransitProfileCode));
+      if (shipment is null)
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(
+          hour, cmd.FirmId, emptyHold, failReason ?? "depart-failed"));
+        continue;
+      }
+
+      world.Shipments.Add(shipment);
+      context.State.AppendEvent(new ShipmentDeparted(
+        hour, shipment.Id.Value, cmd.FirmId, emptyHold, qty));
+    }
+
+    world.PendingPlanRepositions.Clear();
     return ValueTask.CompletedTask;
   }
 }

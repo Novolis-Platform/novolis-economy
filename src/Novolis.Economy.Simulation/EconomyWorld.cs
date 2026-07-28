@@ -199,6 +199,9 @@ public sealed class EconomyWorld
   /// <summary>Pending multi-leg plan commands.</summary>
   public List<PlanShipment> PendingPlanShipments { get; } = [];
 
+  /// <summary>Pending empty-hull reposition commands.</summary>
+  public List<PlanReposition> PendingPlanRepositions { get; } = [];
+
   /// <summary>Cumulative transport aggregates (scenario reporting).</summary>
   public TransportAggregates TransportStats { get; } = new();
 

@@ -102,6 +102,39 @@ public sealed class TrampFreighterScenarioTests
   }
 
   [Test]
+  public async Task Tramp_PlanReposition_EmptyHullArrivesWithoutCargo()
+  {
+    var (sim, ids) = CreateTrampWorld();
+    // Fuel only — no cargo at origin.
+    SeedTrampCargoAndFuel(sim, ids, oreAtFrontier: 0m, fuelFrontier: 40m, fuelWay: 40m, fuelCore: 20m);
+
+    sim.Enqueue(new PlanReposition(
+      ids.Tramp, ids.HubFrontier.Value, ids.HubCore.Value, ids.TrampHull.Value));
+
+    var max = 120;
+    while (max-- > 0)
+    {
+      await sim.AdvanceAsync(SimulationDuration.FromHours(1));
+      var delivered = sim.State.Events.OfType<ShipmentDelivered>()
+        .Any(e => e.FirmId.Equals(ids.Tramp) && e.ProductId.Equals(LogisticsProductIds.EmptyHold));
+      if (delivered)
+      {
+        break;
+      }
+    }
+
+    await Assert.That(sim.State.Events.OfType<ShipmentDeparted>()
+      .Any(e => e.FirmId.Equals(ids.Tramp) && e.Quantity.Value == 0m)).IsTrue();
+    await Assert.That(sim.State.Events.OfType<ShipmentDelivered>()
+      .Any(e => e.FirmId.Equals(ids.Tramp) && e.ProductId.Equals(LogisticsProductIds.EmptyHold))).IsTrue();
+    await Assert.That(sim.State.World.TransportStats.FuelBurned.Value).IsGreaterThan(0m);
+    await Assert.That(sim.State.World.Inventory.GetQuantity(
+      new InventoryKey(ids.Tramp, ids.LocCore, ids.Ore)).Value).IsEqualTo(0m);
+    await Assert.That(sim.State.World.Shipments.Count(s =>
+      !s.IsLegacy && s.Status == ShipmentStatus.InTransit)).IsEqualTo(0);
+  }
+
+  [Test]
   public async Task Tramp_RejectsSparseRimDirect_WhenTankCannotMakeTheJump()
   {
     var (sim, ids) = CreateTrampWorld();
