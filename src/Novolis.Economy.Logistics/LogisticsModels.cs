@@ -228,4 +228,11 @@ public sealed class ActiveShipment
 
   /// <summary>Crew labor hours accrued this tick while underway.</summary>
   public decimal CrewLaborThisTick { get; set; }
+
+  /// <summary>
+  /// Consecutive hours stuck waiting to leave a hub (fuel stockout or unpaid toll).
+  /// Reset when a leg begins; after <see cref="LogisticsEngine.MaxHubStallHours"/> the shipment
+  /// unloads cargo at the current hub and cancels so the hull is not permanently locked.
+  /// </summary>
+  public int HubStallHours { get; set; }
 }

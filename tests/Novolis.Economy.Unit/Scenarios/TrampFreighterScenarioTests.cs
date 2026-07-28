@@ -144,6 +144,30 @@ public sealed class TrampFreighterScenarioTests
   }
 
   [Test]
+  public async Task Tramp_AbandonsCargoAtHub_AfterFuelStallTimeout()
+  {
+    var (sim, ids) = CreateTrampWorld(waystationFuelStock: 0m);
+    SeedTrampCargoAndFuel(sim, ids, oreAtFrontier: 10m, fuelFrontier: 4m, fuelWay: 0m, fuelCore: 0m);
+
+    sim.Enqueue(new PlanShipment(
+      ids.Tramp, ids.HubFrontier.Value, ids.HubCore.Value, ids.Ore, Quantity.From(10m), ids.TrampHull.Value));
+
+    await sim.AdvanceAsync(SimulationDuration.FromHours(30));
+    await Assert.That(sim.State.World.Shipments.Any(s =>
+      !s.IsLegacy && s.Status == ShipmentStatus.InTransit)).IsTrue();
+
+    await sim.AdvanceAsync(SimulationDuration.FromHours(LogisticsEngine.MaxHubStallHours + 5));
+
+    await Assert.That(sim.State.World.Shipments.Any(s =>
+      !s.IsLegacy && s.Status == ShipmentStatus.InTransit)).IsFalse();
+    var atWay = sim.State.World.Inventory.GetQuantity(
+      new InventoryKey(ids.Tramp, ids.LocWaystation, ids.Ore));
+    await Assert.That(atWay.Value).IsEqualTo(10m);
+    await Assert.That(sim.State.World.Inventory.GetQuantity(
+      new InventoryKey(ids.Tramp, ids.LocCore, ids.Ore)).Value).IsEqualTo(0m);
+  }
+
+  [Test]
   public async Task CompetingTraffic_BerthContentionAtBusyWaystation()
   {
     var (sim, ids) = CreateTrampWorld(waystationBerths: 1);

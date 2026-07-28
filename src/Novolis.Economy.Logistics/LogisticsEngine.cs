@@ -6,6 +6,12 @@ namespace Novolis.Economy.Logistics;
 /// <summary>Advances and creates shipments (legacy single-leg and multi-leg hub network).</summary>
 public static class LogisticsEngine
 {
+  /// <summary>
+  /// Hours a multi-leg shipment may remain stuck at a hub waiting for fuel or toll payment
+  /// before cargo is unloaded in place and the shipment cancelled.
+  /// </summary>
+  public const int MaxHubStallHours = 48;
+
   /// <summary>Legacy: pulls stock and creates an in-transit shipment on a FreightRoute.</summary>
   public static ActiveShipment? TryDepart(
     InventoryStore inventory,
@@ -117,6 +123,13 @@ public static class LogisticsEngine
         failReason = "fuel-unavailable";
         return null;
       }
+
+      // Fill remaining tank capacity when origin stock allows — fewer mid-hub bunkers.
+      var room = Quantity.From(Math.Max(0m, vehicle.FuelTankCapacity.Value - shipment.OnboardFuel.Value));
+      if (room.Value > 0m)
+      {
+        TryBunker(inventory, firmId, originHub, fuelId, room, vehicle, shipment, out _);
+      }
     }
 
     if (shipment.SegmentHoursRemaining == 0)
@@ -190,7 +203,22 @@ public static class LogisticsEngine
           }
           else
           {
+            if (!EnsureFuelForNextLeg(
+                  shipment, inventory, hubs, corridors, fuelUnitCost, ref fuelBunkered))
+            {
+              DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered);
+              break;
+            }
+
             BeginLeg(shipment, corridors, tryPayToll, ref tollsPaid, legStarts);
+            if (shipment.Phase == ShipmentPhase.Underway)
+            {
+              shipment.HubStallHours = 0;
+            }
+            else if (shipment.Phase == ShipmentPhase.Loading)
+            {
+              DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered);
+            }
           }
 
           break;
@@ -218,12 +246,24 @@ public static class LogisticsEngine
             if (!EnsureFuelForNextLeg(
                   shipment, inventory, hubs, corridors, fuelUnitCost, ref fuelBunkered))
             {
-              shipment.Phase = ShipmentPhase.Loading;
-              shipment.SegmentHoursRemaining = 1;
+              if (DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered))
+              {
+                break;
+              }
+
               break;
             }
 
             BeginLegOrWait(shipment, corridors, hubs, berthUsage, tryPayToll, ref tollsPaid, legStarts);
+            if (shipment.Phase == ShipmentPhase.Underway)
+            {
+              shipment.HubStallHours = 0;
+            }
+            else if (shipment.Phase == ShipmentPhase.Loading
+                     && DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered))
+            {
+              break;
+            }
           }
 
           break;
@@ -281,12 +321,19 @@ public static class LogisticsEngine
               if (!EnsureFuelForNextLeg(
                     shipment, inventory, hubs, corridors, fuelUnitCost, ref fuelBunkered))
               {
-                shipment.Phase = ShipmentPhase.Loading;
-                shipment.SegmentHoursRemaining = 1;
+                DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered);
                 break;
               }
 
               BeginLegOrWait(shipment, corridors, hubs, berthUsage, tryPayToll, ref tollsPaid, legStarts);
+              if (shipment.Phase == ShipmentPhase.Underway)
+              {
+                shipment.HubStallHours = 0;
+              }
+              else if (shipment.Phase == ShipmentPhase.Loading)
+              {
+                DeferAtHubForFuelOrToll(shipment, inventory, hubs, delivered);
+              }
             }
           }
 
@@ -307,6 +354,50 @@ public static class LogisticsEngine
       hubArrivals);
   }
 
+  /// <summary>
+  /// Counts a fuel/toll stall hour. After <see cref="MaxHubStallHours"/>, unloads cargo at the
+  /// current hub and cancels so the hull can resume work.
+  /// </summary>
+  /// <returns>True when the shipment was abandoned.</returns>
+  private static bool DeferAtHubForFuelOrToll(
+    ActiveShipment shipment,
+    InventoryStore inventory,
+    IReadOnlyDictionary<TransportHubId, TransportHub> hubs,
+    List<ActiveShipment> delivered)
+  {
+    _ = delivered;
+    shipment.HubStallHours++;
+    if (shipment.HubStallHours >= MaxHubStallHours)
+    {
+      AbandonAtCurrentHub(shipment, inventory, hubs);
+      return true;
+    }
+
+    shipment.Phase = ShipmentPhase.Loading;
+    shipment.SegmentHoursRemaining = 1;
+    return false;
+  }
+
+  private static void AbandonAtCurrentHub(
+    ActiveShipment shipment,
+    InventoryStore inventory,
+    IReadOnlyDictionary<TransportHubId, TransportHub> hubs)
+  {
+    var hub = hubs[shipment.CurrentHubId];
+    inventory.Add(
+      new InventoryKey(shipment.FirmId, hub.LocationId, shipment.ProductId),
+      new ProductBatch(
+        shipment.ProductId,
+        shipment.Quantity,
+        new ProductQuality(100m),
+        shipment.UnitCost,
+        shipment.DepartedAt.Date,
+        BrandId: null));
+    shipment.Status = ShipmentStatus.Cancelled;
+    shipment.Phase = ShipmentPhase.Cancelled;
+    shipment.HubStallHours = 0;
+  }
+
   private static bool EnsureFuelForNextLeg(
     ActiveShipment shipment,
     InventoryStore inventory,
@@ -324,25 +415,40 @@ public static class LogisticsEngine
     var next = corridors[shipment.Itinerary.CorridorIds[shipment.LegIndex]];
     var burn = ItineraryPlanner.FuelBurnForLeg(next, shipment.Vehicle);
     var deficit = Quantity.From(Math.Max(0m, burn.Value - shipment.OnboardFuel.Value));
-    if (deficit.Value <= 0m)
+    if (deficit.Value > 0m)
     {
-      return true;
+      if (!TryBunker(
+            inventory,
+            shipment.FirmId,
+            hubs[shipment.CurrentHubId],
+            fuelId,
+            deficit,
+            shipment.Vehicle,
+            shipment,
+            out var bunkered))
+      {
+        return false;
+      }
+
+      fuelBunkered = Quantity.From(fuelBunkered.Value + bunkered.Value);
     }
 
-    if (!TryBunker(
+    // Opportunistic top-up so later legs need fewer mid-hub bunkers.
+    var room = Quantity.From(Math.Max(0m, shipment.Vehicle.FuelTankCapacity.Value - shipment.OnboardFuel.Value));
+    if (room.Value > 0m
+        && TryBunker(
           inventory,
           shipment.FirmId,
           hubs[shipment.CurrentHubId],
           fuelId,
-          deficit,
+          room,
           shipment.Vehicle,
           shipment,
-          out var bunkered))
+          out var topped))
     {
-      return false;
+      fuelBunkered = Quantity.From(fuelBunkered.Value + topped.Value);
     }
 
-    fuelBunkered = Quantity.From(fuelBunkered.Value + bunkered.Value);
     return true;
   }
 

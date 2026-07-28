@@ -66,6 +66,21 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     if (ship is not null)
     {
       _currentHub = ship.CurrentHubId;
+      // Mid-route fuel/toll stalls leave Phase=Loading; keep buying bunker so Logistics can resume.
+      if (ship.Phase is ShipmentPhase.Loading or ShipmentPhase.WaitingBerth)
+      {
+        var site = _policy.Sites.FirstOrDefault(s => s.HubId.Equals(ship.CurrentHubId));
+        if (site is not null)
+        {
+          EnsureBunker(context, site);
+          LastDecision = ship.Phase == ShipmentPhase.WaitingBerth
+            ? $"await berth @ {site.Name}"
+            : $"bunker mid-route @ {site.Name} (stall {ship.HubStallHours}h)";
+          LastEval = _activeHaul?.Summary ?? "";
+          return;
+        }
+      }
+
       LastDecision = $"underway @ {HubName(context, _currentHub)}";
       return;
     }
@@ -92,7 +107,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
             && haul.OriginLoc.Equals(site.LocationId)
             && have + 0.01m >= Math.Min(haul.Quantity, 1m))
         {
-          if (!EnsureBunker(context, site))
+          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, haul.OriginHub, haul.DestHub)))
           {
             LastDecision = $"bunkering @ {site.Name}";
             LastEval = haul.Summary;
@@ -123,7 +138,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
         var outbound = BestOutboundFrom(context, site, sku, have, rng);
         if (outbound is not null)
         {
-          if (!EnsureBunker(context, site))
+          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, outbound.OriginHub, outbound.DestHub)))
           {
             _activeHaul = outbound;
             LastDecision = $"bunkering @ {site.Name}";
@@ -173,7 +188,8 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
     _activeHaul = best;
     var originSite = _siteByLoc[best.OriginLoc];
-    if (!EnsureBunker(context, originSite))
+    var fuelNeed = FirstLegFuelNeed(context, best.OriginHub, best.DestHub);
+    if (!EnsureBunker(context, originSite, fuelNeed))
     {
       context.Enqueue(new PostHubOrder(
         FirmId, best.OriginLoc, best.Product, HubOrderSide.Buy,
@@ -195,6 +211,21 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
   private AgentSite HomeSite() =>
     _policy.Sites.FirstOrDefault(s => s.HubId.Equals(_currentHub)) ?? _policy.Sites[0];
+
+  private decimal FirstLegFuelNeed(AgentContext context, TransportHubId origin, TransportHubId dest)
+  {
+    var floor = _policy.MinBunkerFuel;
+    if (!TryGetRoute(origin, dest, context.World, out var itinerary)
+        || itinerary is null
+        || itinerary.LegCount == 0)
+    {
+      return floor;
+    }
+
+    var first = context.World.Corridors[itinerary.CorridorIds[0]];
+    var burn = ItineraryPlanner.FuelBurnForLeg(first, _policy.Vehicle).Value;
+    return Math.Max(floor, burn);
+  }
 
   private void OfferLocalSale(
     AgentContext context, AgentSite site, ProductId sku, decimal have, DeterministicRandom rng)
@@ -219,36 +250,42 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     LastEval = bestBid > 0m ? $"clear bid {bestBid:0.##}" : "deliver into book";
   }
 
-  private bool EnsureBunker(AgentContext context, AgentSite site)
+  private bool EnsureBunker(AgentContext context, AgentSite site, decimal? minFuel = null)
   {
+    var need = minFuel ?? _policy.MinBunkerFuel;
+    // Cap at tank — TryDepart cannot bunker beyond capacity.
+    need = Math.Min(need, _policy.Vehicle.FuelTankCapacity.Value);
     var fuel = Qty(context, site.LocationId, _policy.FuelProduct);
-    if (fuel >= _policy.MinBunkerFuel)
+    if (fuel + 0.0000001m >= need)
     {
       return true;
     }
 
-    TopUpFuelAt(context, site);
+    TopUpFuelAt(context, site, need);
     if (_policy.AllowFuelProcurement)
     {
+      var procure = Math.Max(8m, need - fuel + 2m);
       context.Enqueue(new PlaceProcurementOrder(
-        FirmId, site.LocationId, _policy.FuelProduct, Quantity.From(8m),
+        FirmId, site.LocationId, _policy.FuelProduct, Quantity.From(procure),
         Money.From(_policy.FuelBuyLimitPrice * 1.2m)));
     }
 
-    return Qty(context, site.LocationId, _policy.FuelProduct) >= _policy.MinBunkerFuel;
+    return Qty(context, site.LocationId, _policy.FuelProduct) + 0.0000001m >= need;
   }
 
-  private void TopUpFuelAt(AgentContext context, AgentSite site)
+  private void TopUpFuelAt(AgentContext context, AgentSite site, decimal? minFuel = null)
   {
+    var need = minFuel ?? 6m;
     var fuel = Qty(context, site.LocationId, _policy.FuelProduct);
-    if (fuel >= 6m)
+    if (fuel + 0.0000001m >= need)
     {
       return;
     }
 
     HubOrderQuotes.CancelOpen(context, FirmId, site.LocationId, _policy.FuelProduct);
+    var buyQty = Math.Max(12m, need - fuel + 4m);
     context.Enqueue(new PostHubOrder(
-      FirmId, site.LocationId, _policy.FuelProduct, HubOrderSide.Buy, Quantity.From(12m),
+      FirmId, site.LocationId, _policy.FuelProduct, HubOrderSide.Buy, Quantity.From(buyQty),
       Money.From(_policy.FuelBuyLimitPrice)));
   }
 
