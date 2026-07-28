@@ -48,6 +48,15 @@ public sealed record IssueShipment(
   ProductId ProductId,
   Quantity Quantity) : IEconomyCommand;
 
+/// <summary>Plan and depart a multi-leg shipment between transport hubs.</summary>
+public sealed record PlanShipment(
+  FirmId FirmId,
+  Guid OriginHubId,
+  Guid DestinationHubId,
+  ProductId ProductId,
+  Quantity Quantity,
+  Guid VehicleClassId) : IEconomyCommand;
+
 /// <summary>Set available labor hours per firm per tick.</summary>
 public sealed record SetAvailableLabor(
   FirmId FirmId,
@@ -116,6 +125,42 @@ public sealed record ShipmentDelivered(
   FirmId FirmId,
   ProductId ProductId,
   Quantity Quantity) : IEconomyEvent;
+
+/// <summary>Shipment entered a corridor leg.</summary>
+public sealed record ShipmentLegStarted(
+  SimulationHour Hour,
+  Guid ShipmentId,
+  FirmId FirmId,
+  Guid CorridorId) : IEconomyEvent;
+
+/// <summary>Shipment arrived at a hub (intermediate or final).</summary>
+public sealed record ShipmentHubArrived(
+  SimulationHour Hour,
+  Guid ShipmentId,
+  FirmId FirmId,
+  Guid HubId) : IEconomyEvent;
+
+/// <summary>Fuel taken from hub inventory onto a shipment.</summary>
+public sealed record FuelBunkered(
+  SimulationHour Hour,
+  Guid ShipmentId,
+  FirmId FirmId,
+  ProductId FuelProductId,
+  Quantity Quantity) : IEconomyEvent;
+
+/// <summary>Corridor toll paid from firm cash.</summary>
+public sealed record TransportTollPaid(
+  SimulationHour Hour,
+  Guid ShipmentId,
+  FirmId FirmId,
+  Money Amount) : IEconomyEvent;
+
+/// <summary>Multi-leg plan could not be formed or departed.</summary>
+public sealed record ShipmentPlanFailed(
+  SimulationHour Hour,
+  FirmId FirmId,
+  ProductId ProductId,
+  string Reason) : IEconomyEvent;
 
 /// <summary>Observed market trade.</summary>
 public sealed record MarketTradeObserved(

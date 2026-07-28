@@ -66,6 +66,35 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
+  /// <summary>Adds a transport hub.</summary>
+  public EconomyWorldBuilder AddHub(TransportHub hub)
+  {
+    _world.Hubs[hub.Id] = hub;
+    return this;
+  }
+
+  /// <summary>Adds a transport corridor.</summary>
+  public EconomyWorldBuilder AddCorridor(TransportCorridor corridor)
+  {
+    _world.Corridors[corridor.Id] = corridor;
+    return this;
+  }
+
+  /// <summary>Adds a vehicle class.</summary>
+  public EconomyWorldBuilder AddVehicleClass(VehicleClass vehicle)
+  {
+    _world.VehicleClasses[vehicle.Id] = vehicle;
+    return this;
+  }
+
+  /// <summary>Sets the world fuel product and write-off unit cost.</summary>
+  public EconomyWorldBuilder SetTransportFuel(ProductId fuelProductId, Money unitCost)
+  {
+    _world.TransportFuelProductId = fuelProductId;
+    _world.TransportFuelUnitCost = unitCost;
+    return this;
+  }
+
   /// <summary>Maps a facility to its restock route (storage → retail).</summary>
   public EconomyWorldBuilder SetRestockRoute(FacilityId facilityId, FreightRouteId routeId)
   {

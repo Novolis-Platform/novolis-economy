@@ -104,6 +104,21 @@ public sealed class EconomyWorld
   /// <summary>Freight routes.</summary>
   public Dictionary<FreightRouteId, FreightRoute> Routes { get; } = new();
 
+  /// <summary>Transport hubs.</summary>
+  public Dictionary<TransportHubId, TransportHub> Hubs { get; } = new();
+
+  /// <summary>Directed corridors between hubs.</summary>
+  public Dictionary<TransportCorridorId, TransportCorridor> Corridors { get; } = new();
+
+  /// <summary>Vehicle classes.</summary>
+  public Dictionary<VehicleClassId, VehicleClass> VehicleClasses { get; } = new();
+
+  /// <summary>Optional default fuel product for multi-leg transport.</summary>
+  public ProductId? TransportFuelProductId { get; set; }
+
+  /// <summary>Unit cost used when writing off burned fuel (defaults to 1).</summary>
+  public Money TransportFuelUnitCost { get; set; } = Money.From(1m);
+
   /// <summary>Restock routes: facility storage → retail (optional auto-restock).</summary>
   public Dictionary<FacilityId, FreightRouteId> RestockRoutes { get; } = new();
 
@@ -115,6 +130,12 @@ public sealed class EconomyWorld
 
   /// <summary>Pending shipment commands.</summary>
   public List<IssueShipment> PendingShipments { get; } = [];
+
+  /// <summary>Pending multi-leg plan commands.</summary>
+  public List<PlanShipment> PendingPlanShipments { get; } = [];
+
+  /// <summary>Cumulative transport aggregates (scenario reporting).</summary>
+  public TransportAggregates TransportStats { get; } = new();
 
   /// <summary>Consumer cohorts.</summary>
   public List<CohortState> Cohorts { get; } = [];
@@ -208,4 +229,35 @@ public sealed class EconomyWorld
 
     return hash;
   }
+}
+
+/// <summary>Running transport economics counters for scenarios.</summary>
+public sealed class TransportAggregates
+{
+  /// <summary>Cargo quantity delivered via multi-leg shipments.</summary>
+  public Quantity CargoDelivered { get; set; }
+
+  /// <summary>Fuel units burned.</summary>
+  public Quantity FuelBurned { get; set; }
+
+  /// <summary>Ledger value of burned fuel.</summary>
+  public Money FuelBurnValue { get; set; }
+
+  /// <summary>Fuel units bunkered from hubs.</summary>
+  public Quantity FuelBunkered { get; set; }
+
+  /// <summary>Tolls paid.</summary>
+  public Money TollsPaid { get; set; }
+
+  /// <summary>Crew labor hours while underway.</summary>
+  public decimal CrewLaborHours { get; set; }
+
+  /// <summary>Failed plan attempts.</summary>
+  public int FailedPlans { get; set; }
+
+  /// <summary>Sum of hours from depart to deliver for completed multi-leg shipments.</summary>
+  public long TransitHoursSum { get; set; }
+
+  /// <summary>Count of completed multi-leg deliveries (for average transit).</summary>
+  public int TransitSampleCount { get; set; }
 }

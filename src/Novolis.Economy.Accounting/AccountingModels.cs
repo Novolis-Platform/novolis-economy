@@ -24,6 +24,10 @@ public enum AccountRole
   Equity = 7,
   /// <summary>Wage liability accrued.</summary>
   WagesPayable = 8,
+  /// <summary>Transport fuel consumed while underway.</summary>
+  TransportFuelExpense = 9,
+  /// <summary>Corridor / port tolls paid in cash.</summary>
+  TransportTollExpense = 10,
 }
 
 /// <summary>Identifies a ledger account.</summary>
@@ -246,6 +250,27 @@ public static class LedgerEngine
   /// <summary>Writes off spoiled inventory to COGS.</summary>
   public static void WriteOffInventory(FirmLedger ledger, Money amount, SimulationDate date) =>
     ledger.Post(AccountRole.CostOfGoodsSold, AccountRole.Inventory, amount, date, "Spoilage");
+
+  /// <summary>Writes off onboard fuel burned to transport fuel expense.</summary>
+  public static void PostFuelBurn(FirmLedger ledger, Money amount, SimulationDate date) =>
+    ledger.Post(AccountRole.TransportFuelExpense, AccountRole.Inventory, amount, date, "Transport fuel burn");
+
+  /// <summary>Pays a corridor toll from cash when affordable.</summary>
+  public static bool TryPostToll(FirmLedger ledger, Money amount, SimulationDate date)
+  {
+    if (amount.Amount <= 0m)
+    {
+      return true;
+    }
+
+    if (ledger.Cash.Amount + 0.0000001m < amount.Amount)
+    {
+      return false;
+    }
+
+    ledger.Post(AccountRole.TransportTollExpense, AccountRole.Cash, amount, date, "Transport toll");
+    return true;
+  }
 }
 
 /// <summary>Marker that an accounting period should close.</summary>

@@ -2,6 +2,13 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Economic transport
+
+- Hub / corridor / vehicle-class transport network (geography-agnostic)
+- `ItineraryPlanner` + multi-leg `LogisticsEngine` (dwell, bunker fuel, berth queue, crew, tolls)
+- `PlanShipment` command; ledger roles `TransportFuelExpense` / `TransportTollExpense`
+- Hub-network scenario + machine-speed smoke aggregates; `FreightRoute` remains a single-leg shim
+
 ## 2026.1.0 — Economic kernel
 
 - `EconomyWorld` + `EconomyWorldBuilder`

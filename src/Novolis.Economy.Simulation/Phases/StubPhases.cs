@@ -41,6 +41,9 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case IssueShipment shipment:
           world.PendingShipments.Add(shipment);
           break;
+        case PlanShipment plan:
+          world.PendingPlanShipments.Add(plan);
+          break;
         case SetAvailableLabor labor:
           world.AvailableLaborHours[labor.FirmId] = labor.HoursPerTick;
           break;
@@ -54,7 +57,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
   }
 }
 
-/// <summary>Allocates labor to manufacturing and accrues wages.</summary>
+/// <summary>Allocates labor to manufacturing + underway crew and accrues wages.</summary>
 public sealed class AllocateLaborPhase : ISimulationPhase
 {
   /// <inheritdoc />
@@ -65,14 +68,25 @@ public sealed class AllocateLaborPhase : ISimulationPhase
   {
     var world = context.State.World;
     world.AllocatedLaborHours.Clear();
+
+    var crewDemand = new Dictionary<FirmId, decimal>();
+    foreach (var shipment in world.Shipments.Where(s => !s.IsLegacy && s.Phase == ShipmentPhase.Underway && s.Vehicle is not null))
+    {
+      var hours = shipment.Vehicle!.CrewLaborPerUnderwayHour;
+      crewDemand[shipment.FirmId] = crewDemand.GetValueOrDefault(shipment.FirmId) + hours;
+    }
+
     foreach (var (firmId, available) in world.AvailableLaborHours.OrderBy(kv => kv.Key.Value))
     {
       var planned = world.ProductionPlans
         .Where(p => p.Key.Firm == firmId)
         .Sum(p => p.Value.Value * world.Policy.LaborHoursPerOutputUnit);
-      var allocated = Math.Min(available, planned);
+      var crew = crewDemand.GetValueOrDefault(firmId);
+      var crewAllocated = Math.Min(crew, available);
+      var manufacturingCap = Math.Max(0m, available - crewAllocated);
+      var allocated = Math.Min(manufacturingCap, planned);
       world.AllocatedLaborHours[firmId] = allocated;
-      var wage = Money.From(allocated * world.Policy.WageRatePerHour.Amount);
+      var wage = Money.From((allocated + crewAllocated) * world.Policy.WageRatePerHour.Amount);
       if (wage.Amount <= 0m || !world.Ledgers.TryGetValue(firmId, out var ledger))
       {
         continue;
@@ -154,11 +168,66 @@ public sealed class AcquireInputsPhase : ISimulationPhase
     }
 
     world.PendingShipments.Clear();
+
+    foreach (var cmd in world.PendingPlanShipments.OrderBy(s => s.FirmId.Value).ThenBy(s => s.ProductId.Value))
+    {
+      var originId = TransportHubId.From(cmd.OriginHubId);
+      var destId = TransportHubId.From(cmd.DestinationHubId);
+      var vehicleId = VehicleClassId.From(cmd.VehicleClassId);
+      if (!world.Hubs.TryGetValue(originId, out var origin) ||
+          !world.Hubs.ContainsKey(destId) ||
+          !world.VehicleClasses.TryGetValue(vehicleId, out var vehicle))
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(hour, cmd.FirmId, cmd.ProductId, "unknown-hub-or-vehicle"));
+        continue;
+      }
+
+      if (!ItineraryPlanner.TryPlan(
+            originId,
+            destId,
+            cmd.Quantity,
+            vehicle,
+            world.Corridors,
+            out var itinerary))
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(hour, cmd.FirmId, cmd.ProductId, "no-feasible-path"));
+        continue;
+      }
+
+      var shipment = LogisticsEngine.TryDepartItinerary(
+        world.Inventory,
+        cmd.FirmId,
+        origin,
+        itinerary,
+        vehicle,
+        cmd.ProductId,
+        cmd.Quantity,
+        world.TransportFuelProductId,
+        hour,
+        world.Corridors,
+        out _,
+        out var failReason);
+      if (shipment is null)
+      {
+        world.TransportStats.FailedPlans++;
+        context.State.AppendEvent(new ShipmentPlanFailed(
+          hour, cmd.FirmId, cmd.ProductId, failReason ?? "depart-failed"));
+        continue;
+      }
+
+      world.Shipments.Add(shipment);
+      context.State.AppendEvent(new ShipmentDeparted(
+        hour, shipment.Id.Value, cmd.FirmId, cmd.ProductId, cmd.Quantity));
+    }
+
+    world.PendingPlanShipments.Clear();
     return ValueTask.CompletedTask;
   }
 }
 
-/// <summary>Advances in-transit shipments.</summary>
+/// <summary>Advances in-transit shipments (legacy routes and multi-leg hubs).</summary>
 public sealed class TransportInventoryPhase : ISimulationPhase
 {
   /// <inheritdoc />
@@ -169,16 +238,97 @@ public sealed class TransportInventoryPhase : ISimulationPhase
   {
     var world = context.State.World;
     var hour = context.State.Clock;
-    var delivered = LogisticsEngine.AdvanceHour(world.Shipments, world.Inventory, world.Routes);
-    foreach (var shipment in delivered)
+    var berthUsage = new Dictionary<TransportHubId, int>();
+
+    bool TryPayToll(FirmId firmId, Money toll)
+    {
+      if (!world.Ledgers.TryGetValue(firmId, out var ledger))
+      {
+        return false;
+      }
+
+      return LedgerEngine.TryPostToll(ledger, toll, hour.Date);
+    }
+
+    var result = LogisticsEngine.AdvanceHour(
+      world.Shipments,
+      world.Inventory,
+      world.Routes,
+      world.Hubs,
+      world.Corridors,
+      berthUsage,
+      TryPayToll,
+      world.TransportFuelUnitCost);
+
+    foreach (var (shipment, corridorId) in result.LegStarts)
+    {
+      context.State.AppendEvent(new ShipmentLegStarted(
+        hour, shipment.Id.Value, shipment.FirmId, corridorId.Value));
+    }
+
+    foreach (var (shipment, hubId) in result.HubArrivals)
+    {
+      context.State.AppendEvent(new ShipmentHubArrived(
+        hour, shipment.Id.Value, shipment.FirmId, hubId.Value));
+    }
+
+    if (result.FuelBunkered.Value > 0m && world.TransportFuelProductId is { } fuelId)
+    {
+      var sample = result.HubArrivals.FirstOrDefault().Shipment
+        ?? result.LegStarts.FirstOrDefault().Shipment
+        ?? result.Delivered.FirstOrDefault();
+      context.State.AppendEvent(new FuelBunkered(
+        hour,
+        sample?.Id.Value ?? Guid.Empty,
+        sample?.FirmId ?? FirmId.From(Guid.Empty),
+        fuelId,
+        result.FuelBunkered));
+    }
+
+    if (result.TollsPaid.Amount > 0m)
+    {
+      var sample = result.LegStarts.FirstOrDefault().Shipment;
+      context.State.AppendEvent(new TransportTollPaid(
+        hour,
+        sample?.Id.Value ?? Guid.Empty,
+        sample?.FirmId ?? FirmId.From(Guid.Empty),
+        result.TollsPaid));
+    }
+
+    foreach (var (firmId, burnValue) in result.FuelBurnValueByFirm.OrderBy(kv => kv.Key.Value))
+    {
+      if (burnValue.Amount > 0m && world.Ledgers.TryGetValue(firmId, out var ledger))
+      {
+        LedgerEngine.PostFuelBurn(ledger, burnValue, hour.Date);
+      }
+    }
+
+    world.TransportStats.FuelBurned = Quantity.From(world.TransportStats.FuelBurned.Value + result.FuelBurned.Value);
+    world.TransportStats.FuelBurnValue = Money.From(world.TransportStats.FuelBurnValue.Amount + result.FuelBurnValue.Amount);
+    world.TransportStats.FuelBunkered = Quantity.From(world.TransportStats.FuelBunkered.Value + result.FuelBunkered.Value);
+    world.TransportStats.TollsPaid = Money.From(world.TransportStats.TollsPaid.Amount + result.TollsPaid.Amount);
+    world.TransportStats.CrewLaborHours += result.CrewLaborByFirm.Values.Sum();
+
+    foreach (var shipment in result.Delivered)
     {
       context.State.AppendEvent(new ShipmentDelivered(
         hour, shipment.Id.Value, shipment.FirmId, shipment.ProductId, shipment.Quantity));
       context.State.AppendEvent(new InventoryTransferred(
         hour, shipment.FirmId, shipment.ProductId, shipment.Quantity, "shipment-delivery"));
+
+      if (!shipment.IsLegacy)
+      {
+        world.TransportStats.CargoDelivered = Quantity.From(
+          world.TransportStats.CargoDelivered.Value + shipment.Quantity.Value);
+        var transit = hour.HourIndex - shipment.DepartedAt.HourIndex + 1;
+        world.TransportStats.TransitHoursSum += transit;
+        world.TransportStats.TransitSampleCount++;
+      }
     }
 
-    world.Shipments.RemoveAll(s => s.Status is ShipmentStatus.Delivered or ShipmentStatus.Cancelled);
+    world.Shipments.RemoveAll(s =>
+      s.Status is ShipmentStatus.Delivered or ShipmentStatus.Cancelled ||
+      s.Phase is ShipmentPhase.Delivered or ShipmentPhase.Cancelled);
     return ValueTask.CompletedTask;
   }
 }

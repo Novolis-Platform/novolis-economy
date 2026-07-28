@@ -34,6 +34,8 @@ dotnet pack Novolis.Economy.slnx -c Release -o artifacts/packages
 
 Packages are published to **GitHub Packages** on merge to `main` (nuget.org + github restore only).
 
+Dogfood apps that consume those packages live in [`novolis-dogfooding`](https://github.com/Novolis-Platform/novolis-dogfooding) under `apps/economy/` (`EconomyBoard`, `TrampFreighterPlay`).
+
 ## Policy
 
 See [library-boundaries.md](https://github.com/Novolis-Platform/novolis-governance/blob/main/docs/library-boundaries.md) for Math/Physics/Simulation. Economy is an orthogonal domain family documented in [docs/design.md](docs/design.md).
