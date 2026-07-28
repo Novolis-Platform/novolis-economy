@@ -30,10 +30,10 @@ dotnet build Novolis.Economy.slnx
 dotnet test Novolis.Economy.slnx
 ```
 
-Local pack:
+Pack (CI publishes to GitHub Packages on merge to `main`):
 
 ```powershell
-pwsh -File ./scripts/pack-local.ps1
+dotnet pack Novolis.Economy.slnx -c Release -o artifacts/packages
 ```
 
 ## Next steps

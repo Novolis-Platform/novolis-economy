@@ -5,11 +5,6 @@
     <NovolisGitHubRepository>novolis-economy</NovolisGitHubRepository>
   </PropertyGroup>
 
-  <PropertyGroup Label="Local NuGet feed">
-    <NovolisLocalFeed Condition="'$(NovolisLocalFeed)' == ''">$(NOVOLIS_LOCAL_FEED)</NovolisLocalFeed>
-    <NovolisLocalFeed Condition="'$(NovolisLocalFeed)' == ''">$(MSBuildThisFileDirectory)..\artifacts\nuget-local</NovolisLocalFeed>
-  </PropertyGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -38,8 +33,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
-  <Import Project="$(MSBuildThisFileDirectory)..\novolis-governance\build\Novolis.LocalPack.props"
-          Condition="Exists('$(MSBuildThisFileDirectory)..\novolis-governance\build\Novolis.LocalPack.props')" />
   <Import Project="$(MSBuildThisFileDirectory)..\novolis-governance\build\Novolis.GitHubPackages.props"
           Condition="Exists('$(MSBuildThisFileDirectory)..\novolis-governance\build\Novolis.GitHubPackages.props')" />
 </Project>

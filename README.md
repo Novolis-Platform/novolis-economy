@@ -29,8 +29,10 @@ Not a game engine and not spatial simulation. Product hosts (for example a futur
 ```powershell
 dotnet build Novolis.Economy.slnx
 dotnet test Novolis.Economy.slnx
-.\scripts\pack-local.ps1
+dotnet pack Novolis.Economy.slnx -c Release -o artifacts/packages
 ```
+
+Packages are published to **GitHub Packages** on merge to `main` (nuget.org + github restore only).
 
 ## Policy
 
