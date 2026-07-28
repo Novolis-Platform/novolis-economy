@@ -55,6 +55,12 @@ public sealed class EconomyPolicy
   /// (liquid cash conserved). Null keeps legacy “toll burns cash” behavior.
   /// </summary>
   public FirmId? TollBeneficiaryFirmId { get; init; }
+
+  /// <summary>
+  /// Retail price elasticity for <see cref="Population.DemandEngine"/>.
+  /// 0 = legacy (ignore price vs reference); typical soft values 0.5–1.5.
+  /// </summary>
+  public decimal PriceElasticity { get; init; }
 }
 
 /// <summary>Facility binding to firm and inventory locations.</summary>
@@ -189,6 +195,9 @@ public sealed class EconomyWorld
 
   /// <summary>Open invoices.</summary>
   public List<Invoice> Invoices { get; } = [];
+
+  /// <summary>Open hub spot orders.</summary>
+  public List<Novolis.Economy.Markets.HubOrder> HubOrders { get; } = [];
 
   /// <summary>Research budget remaining (cash reserved conceptually).</summary>
   public Dictionary<FirmId, Money> ResearchBudget { get; } = new();

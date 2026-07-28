@@ -21,7 +21,7 @@ public sealed class PhasePipelineTests
     var sim = new EconomySimulation(seed: 7);
     var result = await sim.AdvanceAsync(SimulationDuration.OneHour);
     await Assert.That(result.HoursAdvanced).IsEqualTo(1);
-    await Assert.That(sim.State.LastTickPhases.Count).IsEqualTo(12);
+    await Assert.That(sim.State.LastTickPhases.Count).IsEqualTo(13);
     await Assert.That(sim.State.Clock.HourIndex).IsEqualTo(1);
   }
 

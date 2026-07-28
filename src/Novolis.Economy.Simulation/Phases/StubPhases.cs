@@ -1,6 +1,7 @@
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
 using Novolis.Economy.Logistics;
+using Novolis.Economy.Markets;
 using Novolis.Economy.Population;
 using Novolis.Economy.Production;
 
@@ -50,6 +51,20 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case TransferGoodsForCash xfer:
           TryTransferGoodsForCash(world, context, hour, xfer);
           break;
+        case PostHubOrder post:
+          PostOrder(world, context, hour, post);
+          break;
+        case CancelHubOrder cancel:
+        {
+          var order = world.HubOrders.FirstOrDefault(o => o.Id == cancel.OrderId);
+          if (order is not null)
+          {
+            world.HubOrders.Remove(order);
+            context.State.AppendEvent(new HubOrderCancelled(hour, cancel.OrderId));
+          }
+
+          break;
+        }
         case AccountingPeriodClose:
           // Handled in CloseAccountingPeriodPhase when due; ignore as immediate command.
           break;
@@ -57,6 +72,41 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     }
 
     return ValueTask.CompletedTask;
+  }
+
+  private static void PostOrder(
+    EconomyWorld world,
+    SimulationContext context,
+    SimulationHour hour,
+    PostHubOrder post)
+  {
+    if (post.Quantity.Value <= 0m || post.LimitPrice.Amount < 0m)
+    {
+      return;
+    }
+
+    var id = CreateHubOrderId(post.FirmId, world.HubOrders.Count);
+    var order = new HubOrder(
+      id,
+      post.FirmId,
+      post.LocationId,
+      post.ProductId,
+      post.Side,
+      post.Quantity,
+      post.LimitPrice,
+      hour);
+    world.HubOrders.Add(order);
+    context.State.AppendEvent(new HubOrderPosted(
+      hour, id, post.FirmId, post.LocationId, post.ProductId, post.Side, post.Quantity, post.LimitPrice));
+  }
+
+  private static Guid CreateHubOrderId(FirmId firmId, int index)
+  {
+    var bytes = firmId.Value.ToByteArray();
+    var idx = BitConverter.GetBytes(index);
+    Buffer.BlockCopy(idx, 0, bytes, 12, 4);
+    bytes[15] = 0x0B;
+    return new Guid(bytes);
   }
 
   private static void TryTransferGoodsForCash(
@@ -284,6 +334,110 @@ public sealed class AcquireInputsPhase : ISimulationPhase
     }
 
     world.PendingPlanShipments.Clear();
+    return ValueTask.CompletedTask;
+  }
+}
+
+/// <summary>Matches hub spot buy and sell orders at the same location.</summary>
+public sealed class MatchHubOrdersPhase : ISimulationPhase
+{
+  /// <inheritdoc />
+  public SimulationPhaseOrder Order => SimulationPhaseOrder.MatchHubOrders;
+
+  /// <inheritdoc />
+  public ValueTask ExecuteAsync(SimulationContext context, CancellationToken cancellationToken)
+  {
+    var world = context.State.World;
+    var hour = context.State.Clock;
+    var open = world.HubOrders.Where(o => !o.IsFilled).ToList();
+    var groups = open
+      .GroupBy(o => (o.LocationId, o.ProductId))
+      .OrderBy(g => g.Key.LocationId.Value)
+      .ThenBy(g => g.Key.ProductId.Value);
+
+    foreach (var group in groups)
+    {
+      var buys = group
+        .Where(o => o.Side == HubOrderSide.Buy)
+        .OrderByDescending(o => o.LimitPrice.Amount)
+        .ThenBy(o => o.PostedAt.HourIndex)
+        .ThenBy(o => o.Id)
+        .ToList();
+      var sells = group
+        .Where(o => o.Side == HubOrderSide.Sell)
+        .OrderBy(o => o.LimitPrice.Amount)
+        .ThenBy(o => o.PostedAt.HourIndex)
+        .ThenBy(o => o.Id)
+        .ToList();
+
+      var bi = 0;
+      var si = 0;
+      while (bi < buys.Count && si < sells.Count)
+      {
+        var buy = buys[bi];
+        var sell = sells[si];
+        if (buy.FirmId.Equals(sell.FirmId))
+        {
+          si++;
+          continue;
+        }
+
+        if (buy.LimitPrice.Amount + 0.0000001m < sell.LimitPrice.Amount)
+        {
+          break;
+        }
+
+        var fillQty = Math.Min(buy.Remaining.Value, sell.Remaining.Value);
+        if (fillQty <= 0m)
+        {
+          if (buy.Remaining.Value <= 0m) bi++;
+          if (sell.Remaining.Value <= 0m) si++;
+          continue;
+        }
+
+        var unitPrice = sell.LimitPrice; // maker sell price (deterministic)
+        var spend = Money.From(fillQty * unitPrice.Amount);
+        if (!world.Ledgers.TryGetValue(buy.FirmId, out var buyerLedger)
+            || !world.Ledgers.TryGetValue(sell.FirmId, out var sellerLedger)
+            || buyerLedger.Cash.Amount + 0.0000001m < spend.Amount)
+        {
+          bi++;
+          continue;
+        }
+
+        var sellerKey = new InventoryKey(sell.FirmId, sell.LocationId, sell.ProductId);
+        if (!world.Inventory.TryTake(sellerKey, Quantity.From(fillQty), out var taken, out var cogs))
+        {
+          si++;
+          continue;
+        }
+
+        var buyerKey = new InventoryKey(buy.FirmId, buy.LocationId, buy.ProductId);
+        foreach (var lot in taken)
+        {
+          world.Inventory.Add(buyerKey, lot with { UnitCost = unitPrice });
+        }
+
+        LedgerEngine.PostCashSale(sellerLedger, spend, cogs, hour.Date);
+        LedgerEngine.PostCashPurchase(buyerLedger, spend, hour.Date);
+
+        buy.Remaining = Quantity.From(buy.Remaining.Value - fillQty);
+        sell.Remaining = Quantity.From(sell.Remaining.Value - fillQty);
+
+        context.State.AppendEvent(new HubOrderFilled(
+          hour, buy.Id, sell.Id, buy.FirmId, sell.FirmId,
+          buy.LocationId, buy.ProductId, Quantity.From(fillQty), unitPrice));
+        context.State.AppendEvent(new GoodsSoldInterFirm(
+          hour, sell.FirmId, buy.FirmId, buy.LocationId, buy.ProductId,
+          Quantity.From(fillQty), unitPrice, spend));
+        world.MarketBook.RecordTrade(buy.ProductId, Quantity.From(fillQty), unitPrice, hour);
+
+        if (buy.IsFilled) bi++;
+        if (sell.IsFilled) si++;
+      }
+    }
+
+    world.HubOrders.RemoveAll(o => o.IsFilled);
     return ValueTask.CompletedTask;
   }
 }
@@ -549,7 +703,8 @@ public sealed class ResolveConsumerPurchasesPhase : ISimulationPhase
       world.Inventory,
       world.Ledgers,
       context.State.Clock,
-      context.State.AppendEvent);
+      context.State.AppendEvent,
+      world.Policy.PriceElasticity);
 
     foreach (var trade in context.State.Events.OfType<MarketTradeObserved>().Where(e => e.Hour.Equals(context.State.Clock)))
     {

@@ -115,6 +115,10 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **Area-local retail:** `FacilityBinding.Area` optional; `DemandEngine` only clears offers whose facility area matches the cohort (null facility area = global, for legacy scenarios).
 - **`HaulCostEstimator`** (Logistics) — pure fuel + toll + crew cost for an itinerary.
 - **`InventoryPressurePricing`** (Markets) — soft posted-price premium/discount from on-hand vs target stock.
+- **Hub order book** — `PostHubOrder` / `MatchHubOrders` phase; local buy/sell at a location; carriers haul cross-hub.
+- **`ProductionThrottle`** — taper rate as inventory approaches target.
+- **`PriceElasticity`** policy → `DemandEngine` scales buy qty by relative price.
+- **`MoneyStock.Liquid`** — firm cash + household budgets.
 
 ## Non-goals
 

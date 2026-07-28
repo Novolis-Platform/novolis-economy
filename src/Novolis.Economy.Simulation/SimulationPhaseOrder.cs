@@ -12,30 +12,33 @@ public enum SimulationPhaseOrder
   /// <summary>Acquire production inputs.</summary>
   AcquireInputs = 3,
 
+  /// <summary>Match hub spot buy/sell orders at the same location.</summary>
+  MatchHubOrders = 4,
+
   /// <summary>Transport inventory.</summary>
-  TransportInventory = 4,
+  TransportInventory = 5,
 
   /// <summary>Run production.</summary>
-  RunProduction = 5,
+  RunProduction = 6,
 
   /// <summary>Restock retail.</summary>
-  RestockRetail = 6,
+  RestockRetail = 7,
 
   /// <summary>Resolve consumer purchases.</summary>
-  ResolveConsumerPurchases = 7,
+  ResolveConsumerPurchases = 8,
 
   /// <summary>Settle invoices and wages.</summary>
-  SettleInvoicesAndWages = 8,
+  SettleInvoicesAndWages = 9,
 
   /// <summary>Apply research progress.</summary>
-  ApplyResearchProgress = 9,
+  ApplyResearchProgress = 10,
 
   /// <summary>Update expectations and market knowledge.</summary>
-  UpdateExpectations = 10,
+  UpdateExpectations = 11,
 
   /// <summary>Close accounting period when due.</summary>
-  CloseAccountingPeriod = 11,
+  CloseAccountingPeriod = 12,
 
   /// <summary>Emit observations for projections and diagnostics.</summary>
-  EmitObservations = 12,
+  EmitObservations = 13,
 }

@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
 using Novolis.Economy.Production;
@@ -33,6 +32,8 @@ public static class DemandEngine
   /// locations with posted prices, stock-constrained.
   /// When a facility has a non-null <c>Area</c>, only cohorts in that area may buy there;
   /// facilities with null area remain globally visible.
+  /// When <paramref name="priceElasticity"/> &gt; 0, buy qty is scaled by
+  /// (cheapestPrice/offerPrice)^elasticity (clamped).
   /// </summary>
   public static void ResolvePurchases(
     IReadOnlyList<CohortState> cohorts,
@@ -42,7 +43,8 @@ public static class DemandEngine
     InventoryStore inventory,
     IReadOnlyDictionary<FirmId, FirmLedger> ledgers,
     SimulationHour hour,
-    Action<IEconomyEvent> emit)
+    Action<IEconomyEvent> emit,
+    decimal priceElasticity = 0m)
   {
     foreach (var cohort in cohorts.OrderBy(c => c.Definition.Id.Value))
     {
@@ -72,7 +74,7 @@ public static class DemandEngine
           continue;
         }
 
-        var offers =
+        var offers = (
           from price in retailPrices
           let productId = price.Key.Product
           where products.TryGetValue(productId, out var def) && def.Category.Equals(pref.CategoryId)
@@ -84,7 +86,15 @@ public static class DemandEngine
           let stock = inventory.GetQuantity(key)
           where stock.Value > 0m && price.Value.Amount > 0m
           orderby price.Value.Amount, productId.Value
-          select (price.Key.Firm, facility, productId, price.Value, key, stock);
+          select (price.Key.Firm, facility, productId, price.Value, key, stock)
+        ).ToList();
+
+        if (offers.Count == 0)
+        {
+          continue;
+        }
+
+        var refPrice = offers[0].Value.Amount;
 
         foreach (var offer in offers)
         {
@@ -93,8 +103,16 @@ public static class DemandEngine
             break;
           }
 
-          var maxAffordable = Math.Floor(budgetForCategory.Amount / offer.Value.Amount * 10000m) / 10000m;
+          var unit = offer.Value.Amount;
+          var maxAffordable = Math.Floor(budgetForCategory.Amount / unit * 10000m) / 10000m;
           var buyQty = Math.Min(maxAffordable, offer.stock.Value);
+          if (priceElasticity > 0m && unit > 0m)
+          {
+            var factor = (decimal)Math.Pow((double)(refPrice / unit), (double)priceElasticity);
+            factor = Math.Clamp(factor, 0.25m, 4m);
+            buyQty = Math.Floor(buyQty * factor * 10000m) / 10000m;
+          }
+
           if (buyQty <= 0m)
           {
             continue;
@@ -106,7 +124,7 @@ public static class DemandEngine
             continue;
           }
 
-          var revenue = Money.From(offer.Value.Amount * buyQty);
+          var revenue = Money.From(unit * buyQty);
           cohort.BudgetRemaining -= revenue;
           budgetForCategory -= revenue;
 

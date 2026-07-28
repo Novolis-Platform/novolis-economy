@@ -61,6 +61,7 @@ public static class DefaultPhases
     new Phases.ApplyDecisionsPhase(),
     new Phases.AllocateLaborPhase(),
     new Phases.AcquireInputsPhase(),
+    new Phases.MatchHubOrdersPhase(),
     new Phases.TransportInventoryPhase(),
     new Phases.RunProductionPhase(),
     new Phases.RestockRetailPhase(),

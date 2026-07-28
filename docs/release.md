@@ -2,6 +2,11 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Tycoon market primitives
+
+- Hub spot order book (`PostHubOrder`, `MatchHubOrders` phase, `HubOrderFilled`)
+- `ProductionThrottle`, `EconomyPolicy.PriceElasticity`, `MoneyStock.Liquid`
+
 ## 2026.1.x — Pricing / demand rigor
 
 - Optional `FacilityBinding.Area` + area-filtered `DemandEngine` clearing

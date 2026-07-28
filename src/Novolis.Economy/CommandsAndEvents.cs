@@ -217,3 +217,52 @@ public sealed record HouseholdCreditsIssued(
   SimulationHour Hour,
   FirmId FirmId,
   Money Amount) : IEconomyEvent;
+
+/// <summary>Buy or sell side of a hub spot order.</summary>
+public enum HubOrderSide
+{
+  /// <summary>Bid to buy.</summary>
+  Buy = 0,
+  /// <summary>Offer to sell.</summary>
+  Sell = 1,
+}
+
+/// <summary>Post a limit order at a hub inventory location.</summary>
+public sealed record PostHubOrder(
+  FirmId FirmId,
+  InventoryLocationId LocationId,
+  ProductId ProductId,
+  HubOrderSide Side,
+  Quantity Quantity,
+  Money LimitPrice) : IEconomyCommand;
+
+/// <summary>Cancel an open hub order.</summary>
+public sealed record CancelHubOrder(Guid OrderId) : IEconomyCommand;
+
+/// <summary>Hub order accepted onto the book.</summary>
+public sealed record HubOrderPosted(
+  SimulationHour Hour,
+  Guid OrderId,
+  FirmId FirmId,
+  InventoryLocationId LocationId,
+  ProductId ProductId,
+  HubOrderSide Side,
+  Quantity Quantity,
+  Money LimitPrice) : IEconomyEvent;
+
+/// <summary>Hub order (partially) filled against a counterparty.</summary>
+public sealed record HubOrderFilled(
+  SimulationHour Hour,
+  Guid BuyOrderId,
+  Guid SellOrderId,
+  FirmId BuyerFirmId,
+  FirmId SellerFirmId,
+  InventoryLocationId LocationId,
+  ProductId ProductId,
+  Quantity Quantity,
+  Money UnitPrice) : IEconomyEvent;
+
+/// <summary>Hub order removed from the book.</summary>
+public sealed record HubOrderCancelled(
+  SimulationHour Hour,
+  Guid OrderId) : IEconomyEvent;
