@@ -199,6 +199,9 @@ public sealed class EconomyWorld
   /// <summary>Open hub spot orders.</summary>
   public List<Novolis.Economy.Markets.HubOrder> HubOrders { get; } = [];
 
+  /// <summary>Inter-firm term loans.</summary>
+  public List<Novolis.Economy.Finance.Loan> Loans { get; } = [];
+
   /// <summary>Research budget remaining (cash reserved conceptually).</summary>
   public Dictionary<FirmId, Money> ResearchBudget { get; } = new();
 

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Agents</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Heuristic economic agents (not ML) that enqueue firm decisions for Novolis.Economy.Simulation.</Description>
+    <RootNamespace>Novolis.Economy.Agents</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy.Simulation\Novolis.Economy.Simulation.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Finance\Novolis.Economy.Finance.csproj" />
+  </ItemGroup>
+</Project>

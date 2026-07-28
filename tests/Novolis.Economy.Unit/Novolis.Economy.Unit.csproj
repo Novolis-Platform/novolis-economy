@@ -16,5 +16,7 @@
     <ProjectReference Include="../../src/Novolis.Economy.Logistics/Novolis.Economy.Logistics.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Population/Novolis.Economy.Population.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Finance/Novolis.Economy.Finance.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Agents/Novolis.Economy.Agents.csproj" />
   </ItemGroup>
 </Project>

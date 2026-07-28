@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Finance</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Inter-firm term loans, interest accrual, and default hooks for Novolis economic simulation.</Description>
+    <RootNamespace>Novolis.Economy.Finance</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy\Novolis.Economy.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Accounting\Novolis.Economy.Accounting.csproj" />
+  </ItemGroup>
+</Project>

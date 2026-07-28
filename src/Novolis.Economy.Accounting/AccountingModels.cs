@@ -28,6 +28,14 @@ public enum AccountRole
   TransportFuelExpense = 9,
   /// <summary>Corridor / port tolls paid in cash.</summary>
   TransportTollExpense = 10,
+  /// <summary>Loans receivable (asset).</summary>
+  NotesReceivable = 11,
+  /// <summary>Loans payable (liability).</summary>
+  NotesPayable = 12,
+  /// <summary>Interest earned on loans.</summary>
+  InterestIncome = 13,
+  /// <summary>Interest owed on loans.</summary>
+  InterestExpense = 14,
 }
 
 /// <summary>Identifies a ledger account.</summary>
@@ -270,6 +278,39 @@ public static class LedgerEngine
 
     ledger.Post(AccountRole.TransportTollExpense, AccountRole.Cash, amount, date, "Transport toll");
     return true;
+  }
+
+  /// <summary>Lender: notes receivable ↑ / cash ↓. Borrower: cash ↑ / notes payable ↑.</summary>
+  public static void PostLoanDisbursement(
+    FirmLedger lender,
+    FirmLedger borrower,
+    Money principal,
+    SimulationDate date)
+  {
+    lender.Post(AccountRole.NotesReceivable, AccountRole.Cash, principal, date, "Loan disbursement");
+    borrower.Post(AccountRole.Cash, AccountRole.NotesPayable, principal, date, "Loan proceeds");
+  }
+
+  /// <summary>Accrue interest onto notes without moving cash.</summary>
+  public static void PostInterestAccrual(
+    FirmLedger lender,
+    FirmLedger borrower,
+    Money interest,
+    SimulationDate date)
+  {
+    lender.Post(AccountRole.NotesReceivable, AccountRole.InterestIncome, interest, date, "Interest accrual");
+    borrower.Post(AccountRole.InterestExpense, AccountRole.NotesPayable, interest, date, "Interest accrual");
+  }
+
+  /// <summary>Borrower pays lender; reduces notes on both sides.</summary>
+  public static void PostLoanRepayment(
+    FirmLedger lender,
+    FirmLedger borrower,
+    Money amount,
+    SimulationDate date)
+  {
+    borrower.Post(AccountRole.NotesPayable, AccountRole.Cash, amount, date, "Loan repayment");
+    lender.Post(AccountRole.Cash, AccountRole.NotesReceivable, amount, date, "Loan repayment");
   }
 }
 

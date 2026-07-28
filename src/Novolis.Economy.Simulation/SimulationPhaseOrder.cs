@@ -30,15 +30,18 @@ public enum SimulationPhaseOrder
   /// <summary>Settle invoices and wages.</summary>
   SettleInvoicesAndWages = 9,
 
+  /// <summary>Accrue loan interest and attempt term repayment / default.</summary>
+  SettleFinance = 10,
+
   /// <summary>Apply research progress.</summary>
-  ApplyResearchProgress = 10,
+  ApplyResearchProgress = 11,
 
   /// <summary>Update expectations and market knowledge.</summary>
-  UpdateExpectations = 11,
+  UpdateExpectations = 12,
 
   /// <summary>Close accounting period when due.</summary>
-  CloseAccountingPeriod = 12,
+  CloseAccountingPeriod = 13,
 
   /// <summary>Emit observations for projections and diagnostics.</summary>
-  EmitObservations = 13,
+  EmitObservations = 14,
 }

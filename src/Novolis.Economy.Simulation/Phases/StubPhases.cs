@@ -1,5 +1,6 @@
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
+using Novolis.Economy.Finance;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Markets;
 using Novolis.Economy.Population;
@@ -64,6 +65,37 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
 
           break;
         }
+        case OriginateLoan originate:
+        {
+          var loan = LoanEngine.TryOriginate(
+            world.Ledgers,
+            originate,
+            hour,
+            () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+          if (loan is not null)
+          {
+            world.Loans.Add(loan);
+            context.State.AppendEvent(new LoanOriginated(
+              hour, loan.Id, loan.LenderFirmId, loan.BorrowerFirmId,
+              originate.Principal, loan.AnnualInterestRate, loan.DueAt));
+          }
+
+          break;
+        }
+        case RepayLoan repay:
+        {
+          var loan = world.Loans.FirstOrDefault(l => l.Id.Equals(repay.LoanId));
+          if (loan is not null)
+          {
+            var paid = LoanEngine.TryRepay(loan, world.Ledgers, repay.Amount, hour);
+            if (paid.Amount > 0m)
+            {
+              context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));
+            }
+          }
+
+          break;
+        }
         case AccountingPeriodClose:
           // Handled in CloseAccountingPeriodPhase when due; ignore as immediate command.
           break;
@@ -104,6 +136,15 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     var idx = BitConverter.GetBytes(index);
     Buffer.BlockCopy(idx, 0, bytes, 12, 4);
     bytes[15] = 0x0B;
+    return new Guid(bytes);
+  }
+
+  private static Guid CreateLoanGuid(FirmId firmId, int index)
+  {
+    var bytes = firmId.Value.ToByteArray();
+    var idx = BitConverter.GetBytes(index);
+    Buffer.BlockCopy(idx, 0, bytes, 12, 4);
+    bytes[15] = 0xF1;
     return new Guid(bytes);
   }
 
@@ -820,6 +861,50 @@ public sealed class SettleInvoicesAndWagesPhase : ISimulationPhase
         c.BudgetRemaining = Money.From(c.BudgetRemaining.Amount + share);
       }
     }
+  }
+}
+
+/// <summary>Accrues loan interest and settles / defaults loans at term.</summary>
+public sealed class SettleFinancePhase : ISimulationPhase
+{
+  /// <inheritdoc />
+  public SimulationPhaseOrder Order => SimulationPhaseOrder.SettleFinance;
+
+  /// <inheritdoc />
+  public ValueTask ExecuteAsync(SimulationContext context, CancellationToken cancellationToken)
+  {
+    var world = context.State.World;
+    var hour = context.State.Clock;
+
+    foreach (var loan in world.Loans.Where(l => l.Status == LoanStatus.Active).OrderBy(l => l.Id.Value))
+    {
+      var interest = LoanEngine.AccrueHour(loan, world.Ledgers, hour);
+      if (interest.Amount > 0m)
+      {
+        context.State.AppendEvent(new InterestAccrued(hour, loan.Id, interest));
+      }
+
+      if (hour.HourIndex < loan.DueAt.HourIndex)
+      {
+        continue;
+      }
+
+      var owed = loan.PrincipalRemaining;
+      var paid = LoanEngine.TryRepay(loan, world.Ledgers, owed, hour);
+      if (paid.Amount > 0m)
+      {
+        context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));
+      }
+
+      if (loan.Status == LoanStatus.Active && loan.PrincipalRemaining.Amount > 0.0000001m)
+      {
+        loan.Status = LoanStatus.Defaulted;
+        context.State.AppendEvent(new LoanDefaulted(
+          hour, loan.Id, loan.BorrowerFirmId, loan.PrincipalRemaining));
+      }
+    }
+
+    return ValueTask.CompletedTask;
   }
 }
 

@@ -67,6 +67,7 @@ public static class DefaultPhases
     new Phases.RestockRetailPhase(),
     new Phases.ResolveConsumerPurchasesPhase(),
     new Phases.SettleInvoicesAndWagesPhase(),
+    new Phases.SettleFinancePhase(),
     new Phases.ApplyResearchProgressPhase(),
     new Phases.UpdateExpectationsPhase(),
     new Phases.CloseAccountingPeriodPhase(),

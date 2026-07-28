@@ -18,8 +18,10 @@ Novolis.Economy                 primitives, IDs, markers, RNG, commands/events
 Novolis.Economy.Production      recipes, batches, inventory store, production engine
 Novolis.Economy.Markets         market estimates / observed trade book
 Novolis.Economy.Accounting      ledger, invoices, double-entry posting
+Novolis.Economy.Finance         inter-firm term loans, interest, default hooks
 Novolis.Economy.Logistics       hubs, corridors, vehicles, itineraries, multi-leg shipments
 Novolis.Economy.Population      cohorts, preference-weighted demand engine
+Novolis.Economy.Agents          heuristic economic agents (not ML) that enqueue commands
 Novolis.Economy.Simulation      EconomyWorld, phase pipeline, IEconomySimulation
 ```
 
@@ -119,7 +121,9 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **`ProductionThrottle`** — taper rate as inventory approaches target.
 - **`PriceElasticity`** policy → `DemandEngine` scales buy qty by relative price.
 - **`MoneyStock.Liquid`** — firm cash + household budgets.
+- **Finance** — `OriginateLoan` / `RepayLoan`, hourly interest onto notes, term default (`SettleFinance`).
+- **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML.
 
 ## Non-goals
 
-UI/host, AI firm controllers, gamification (XP, morale meters), soft loans/bankruptcy drama, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics.
+UI/host, ML / LLM agents, gamification (XP, morale meters), full bankruptcy liquidation, labor matching, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics.

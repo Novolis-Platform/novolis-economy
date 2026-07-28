@@ -266,3 +266,46 @@ public sealed record HubOrderFilled(
 public sealed record HubOrderCancelled(
   SimulationHour Hour,
   Guid OrderId) : IEconomyEvent;
+
+/// <summary>Originate a term loan from lender cash to borrower cash.</summary>
+public sealed record OriginateLoan(
+  FirmId LenderFirmId,
+  FirmId BorrowerFirmId,
+  Money Principal,
+  decimal AnnualInterestRate,
+  long TermHours) : IEconomyCommand;
+
+/// <summary>Repay principal (and accrued interest) on a loan up to the given amount.</summary>
+public sealed record RepayLoan(
+  LoanId LoanId,
+  Money Amount) : IEconomyCommand;
+
+/// <summary>Loan funds disbursed.</summary>
+public sealed record LoanOriginated(
+  SimulationHour Hour,
+  LoanId LoanId,
+  FirmId LenderFirmId,
+  FirmId BorrowerFirmId,
+  Money Principal,
+  decimal AnnualInterestRate,
+  SimulationHour DueAt) : IEconomyEvent;
+
+/// <summary>Interest added to loan balance.</summary>
+public sealed record InterestAccrued(
+  SimulationHour Hour,
+  LoanId LoanId,
+  Money Amount) : IEconomyEvent;
+
+/// <summary>Cash repayment applied to a loan.</summary>
+public sealed record LoanRepaid(
+  SimulationHour Hour,
+  LoanId LoanId,
+  Money Amount,
+  Money PrincipalRemaining) : IEconomyEvent;
+
+/// <summary>Borrower missed a required repayment.</summary>
+public sealed record LoanDefaulted(
+  SimulationHour Hour,
+  LoanId LoanId,
+  FirmId BorrowerFirmId,
+  Money PrincipalRemaining) : IEconomyEvent;

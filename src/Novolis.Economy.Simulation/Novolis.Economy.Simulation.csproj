@@ -13,5 +13,6 @@
     <ProjectReference Include="..\Novolis.Economy.Accounting\Novolis.Economy.Accounting.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Logistics\Novolis.Economy.Logistics.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Population\Novolis.Economy.Population.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Finance\Novolis.Economy.Finance.csproj" />
   </ItemGroup>
 </Project>

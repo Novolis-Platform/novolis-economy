@@ -164,3 +164,17 @@ public readonly record struct ShipmentId(Guid Value)
   /// <inheritdoc />
   public override string ToString() => Value.ToString("N");
 }
+
+/// <summary>Identifies an inter-firm term loan.</summary>
+/// <param name="Value">Opaque loan key.</param>
+public readonly record struct LoanId(Guid Value)
+{
+  /// <summary>Creates a new loan id.</summary>
+  public static LoanId New() => new(Guid.NewGuid());
+
+  /// <summary>Creates a loan id from a fixed guid.</summary>
+  public static LoanId From(Guid value) => new(value);
+
+  /// <inheritdoc />
+  public override string ToString() => Value.ToString("N");
+}
