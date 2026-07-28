@@ -4,8 +4,10 @@
     <Project Path="src/Novolis.Economy.Production/Novolis.Economy.Production.csproj" />
     <Project Path="src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj" />
     <Project Path="src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />
+    <Project Path="src/Novolis.Economy.Finance/Novolis.Economy.Finance.csproj" />
     <Project Path="src/Novolis.Economy.Logistics/Novolis.Economy.Logistics.csproj" />
     <Project Path="src/Novolis.Economy.Population/Novolis.Economy.Population.csproj" />
+    <Project Path="src/Novolis.Economy.Agents/Novolis.Economy.Agents.csproj" />
     <Project Path="src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
   </Folder>
   <Folder Name="/tests/">
