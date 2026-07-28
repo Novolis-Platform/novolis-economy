@@ -66,13 +66,15 @@ public sealed class FacilityBinding
     FirmId firmId,
     InventoryLocationId storageLocation,
     InventoryLocationId? retailLocation,
-    FacilityLayout layout)
+    FacilityLayout layout,
+    GeographicAreaId? area = null)
   {
     Id = id;
     FirmId = firmId;
     StorageLocation = storageLocation;
     RetailLocation = retailLocation;
     Layout = layout;
+    Area = area;
   }
 
   /// <summary>Facility id.</summary>
@@ -89,6 +91,12 @@ public sealed class FacilityBinding
 
   /// <summary>Layout graph.</summary>
   public FacilityLayout Layout { get; }
+
+  /// <summary>
+  /// Optional geographic area for local demand. Null = visible to all cohorts
+  /// (legacy / global retail).
+  /// </summary>
+  public GeographicAreaId? Area { get; }
 
   /// <summary>Manufacturing capacity summed from manufacturing units.</summary>
   public Quantity ManufacturingCapacity =>
@@ -210,15 +218,15 @@ public sealed class EconomyWorld
     return ledger;
   }
 
-  /// <summary>Retail facility map for demand.</summary>
-  public Dictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation)> RetailFacilityMap()
+  /// <summary>Retail facility map for demand (includes optional area for local clearing).</summary>
+  public Dictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation, GeographicAreaId? Area)> RetailFacilityMap()
   {
-    var map = new Dictionary<FacilityId, (FirmId, InventoryLocationId)>();
+    var map = new Dictionary<FacilityId, (FirmId, InventoryLocationId, GeographicAreaId?)>();
     foreach (var facility in Facilities.Values)
     {
       if (facility.RetailLocation is { } retail)
       {
-        map[facility.Id] = (facility.FirmId, retail);
+        map[facility.Id] = (facility.FirmId, retail, facility.Area);
       }
     }
 

@@ -31,11 +31,13 @@ public static class DemandEngine
   /// <summary>
   /// Each cohort spends remaining budget on preferred products available at retail
   /// locations with posted prices, stock-constrained.
+  /// When a facility has a non-null <c>Area</c>, only cohorts in that area may buy there;
+  /// facilities with null area remain globally visible.
   /// </summary>
   public static void ResolvePurchases(
     IReadOnlyList<CohortState> cohorts,
     IReadOnlyDictionary<(FirmId Firm, FacilityId Facility, ProductId Product), Money> retailPrices,
-    IReadOnlyDictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation)> retailFacilities,
+    IReadOnlyDictionary<FacilityId, (FirmId Firm, InventoryLocationId RetailLocation, GeographicAreaId? Area)> retailFacilities,
     IReadOnlyDictionary<ProductId, ProductDefinition> products,
     InventoryStore inventory,
     IReadOnlyDictionary<FirmId, FirmLedger> ledgers,
@@ -70,7 +72,6 @@ public static class DemandEngine
           continue;
         }
 
-        // Find cheapest available retail offer in this category
         var offers =
           from price in retailPrices
           let productId = price.Key.Product
@@ -78,6 +79,7 @@ public static class DemandEngine
           let facility = price.Key.Facility
           where retailFacilities.ContainsKey(facility)
           let retail = retailFacilities[facility]
+          where retail.Area is null || retail.Area.Equals(cohort.Definition.Area)
           let key = new InventoryKey(retail.Firm, retail.RetailLocation, productId)
           let stock = inventory.GetQuantity(key)
           where stock.Value > 0m && price.Value.Amount > 0m

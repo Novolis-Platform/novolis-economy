@@ -2,6 +2,12 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Pricing / demand rigor
+
+- Optional `FacilityBinding.Area` + area-filtered `DemandEngine` clearing
+- `HaulCostEstimator` for itinerary variable cost
+- `InventoryPressurePricing` for soft stock-driven posted prices
+
 ## 2026.1.x — Closed-loop credits + inter-firm transfer
 
 - Policy: `HouseholdCreditFromWages`, `CohortBudgetResetMode` (`MintFromDisposableIncome` | `CarryForward`), `TollBeneficiaryFirmId`

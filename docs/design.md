@@ -110,6 +110,12 @@ Defaults preserve the open mint used by tramp / commodity-chain scenarios. Close
 
 Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSale` / `PostCashPurchase`); success emits `GoodsSoldInterFirm`, failure emits `TransferGoodsFailed` (`cash` / `stock`).
 
+## Pricing / demand primitives
+
+- **Area-local retail:** `FacilityBinding.Area` optional; `DemandEngine` only clears offers whose facility area matches the cohort (null facility area = global, for legacy scenarios).
+- **`HaulCostEstimator`** (Logistics) — pure fuel + toll + crew cost for an itinerary.
+- **`InventoryPressurePricing`** (Markets) — soft posted-price premium/discount from on-hand vs target stock.
+
 ## Non-goals
 
 UI/host, AI firm controllers, gamification (XP, morale meters), soft loans/bankruptcy drama, full general-equilibrium solvers, Astro coupling, tycoon UI, continuous orbital physics.
