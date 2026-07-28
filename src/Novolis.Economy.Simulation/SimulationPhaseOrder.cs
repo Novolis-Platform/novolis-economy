@@ -9,11 +9,11 @@ public enum SimulationPhaseOrder
   /// <summary>Allocate labor.</summary>
   AllocateLabor = 2,
 
-  /// <summary>Acquire production inputs.</summary>
-  AcquireInputs = 3,
-
   /// <summary>Match hub spot buy/sell orders at the same location.</summary>
-  MatchHubOrders = 4,
+  MatchHubOrders = 3,
+
+  /// <summary>Acquire production inputs / dispatch shipments.</summary>
+  AcquireInputs = 4,
 
   /// <summary>Transport inventory.</summary>
   TransportInventory = 5,
