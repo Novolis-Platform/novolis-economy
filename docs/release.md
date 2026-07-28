@@ -2,6 +2,12 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Primitives lift
+
+- `LegalEntity` / `OwnershipClaim` and transport hub/corridor/vehicle **IDs** live in `Novolis.Economy` (Primitives package branding)
+- Accounting keeps `OwnershipEngine`; Logistics keeps hub/corridor/vehicle **models**
+- Docs/READMEs/package descriptions clarify Primitives vs composition root (Simulation)
+
 ## 2026.1.x — Legal entity, ownership, capacity, default absorb
 
 - `LegalEntity` (Firm / Civic) on `FirmId`, `RegistryId`, `CreditFrozen`

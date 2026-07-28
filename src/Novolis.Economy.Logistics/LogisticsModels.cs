@@ -3,45 +3,6 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Logistics;
 
-/// <summary>Identifies a transport hub (port, yard, starport dock).</summary>
-public readonly record struct TransportHubId(Guid Value)
-{
-  /// <summary>Creates a new hub id.</summary>
-  public static TransportHubId New() => new(Guid.NewGuid());
-
-  /// <summary>Creates a hub id from a fixed guid.</summary>
-  public static TransportHubId From(Guid value) => new(value);
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Identifies a transport corridor (directed leg).</summary>
-public readonly record struct TransportCorridorId(Guid Value)
-{
-  /// <summary>Creates a new corridor id.</summary>
-  public static TransportCorridorId New() => new(Guid.NewGuid());
-
-  /// <summary>Creates a corridor id from a fixed guid.</summary>
-  public static TransportCorridorId From(Guid value) => new(value);
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Identifies a vehicle class.</summary>
-public readonly record struct VehicleClassId(Guid Value)
-{
-  /// <summary>Creates a new vehicle class id.</summary>
-  public static VehicleClassId New() => new(Guid.NewGuid());
-
-  /// <summary>Creates a vehicle class id from a fixed guid.</summary>
-  public static VehicleClassId From(Guid value) => new(value);
-
-  /// <inheritdoc />
-  public override string ToString() => Value.ToString("N");
-}
-
 /// <summary>Transfer / bunker / berth location in the transport network.</summary>
 /// <param name="Id">Hub id.</param>
 /// <param name="LocationId">Inventory location for cargo and fuel at this hub.</param>

@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Logistics</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Hub/corridor transport network, itinerary planning, and multi-leg shipments for Novolis economic simulation.</Description>
+    <Description>Hub/corridor transport network, itinerary planning, and multi-leg shipments. Transport hub/corridor/vehicle IDs live in Novolis.Economy primitives.</Description>
     <RootNamespace>Novolis.Economy.Logistics</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>

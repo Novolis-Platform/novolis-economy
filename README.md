@@ -6,12 +6,14 @@
 
 | Package | Install | Package README |
 |---------|---------|----------------|
-| `Novolis.Economy` | `dotnet add package Novolis.Economy` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy/README.md) |
+| `Novolis.Economy` | `dotnet add package Novolis.Economy` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy/README.md) — **Primitives** |
 | `Novolis.Economy.Production` | `dotnet add package Novolis.Economy.Production` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Production/README.md) |
 | `Novolis.Economy.Markets` | `dotnet add package Novolis.Economy.Markets` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Markets/README.md) |
 | `Novolis.Economy.Accounting` | `dotnet add package Novolis.Economy.Accounting` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Accounting/README.md) |
+| `Novolis.Economy.Finance` | `dotnet add package Novolis.Economy.Finance` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Finance/README.md) |
 | `Novolis.Economy.Logistics` | `dotnet add package Novolis.Economy.Logistics` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Logistics/README.md) |
 | `Novolis.Economy.Population` | `dotnet add package Novolis.Economy.Population` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Population/README.md) |
+| `Novolis.Economy.Agents` | `dotnet add package Novolis.Economy.Agents` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Agents/README.md) |
 | `Novolis.Economy.Simulation` | `dotnet add package Novolis.Economy.Simulation` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Simulation/README.md) |
 
 For NuGet.org and Visual Studio, the **embedded** README.md inside each package is authoritative.
@@ -20,7 +22,7 @@ For NuGet.org and Visual Studio, the **embedded** README.md inside each package 
 
 # novolis-economy
 
-**Headless economic simulation libraries** — products, markets, accounting, logistics, population cohorts, and a deterministic phase runner.
+**Headless economic simulation libraries** — layered as **Primitives** (`Novolis.Economy`) → domain engines → **Simulation** composition root (+ Agents).
 
 Not a game engine and not spatial simulation. Product hosts (for example a future Novolis Commerce app) compose these packages.
 

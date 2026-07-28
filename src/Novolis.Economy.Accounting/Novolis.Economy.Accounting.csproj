@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Accounting</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Ledger and period-close stubs for Novolis economic simulation.</Description>
+    <Description>Double-entry ledgers, invoices, period close, and ownership engine (OwnershipClaim DTO lives in Novolis.Economy primitives).</Description>
     <RootNamespace>Novolis.Economy.Accounting</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>

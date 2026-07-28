@@ -14,16 +14,19 @@ This repo must **not** reference `Novolis.Simulation.*`, Raylib, or product host
 ## Package split
 
 ```text
-Novolis.Economy                 primitives, IDs, markers, RNG, commands/events
+Novolis.Economy                 PRIMITIVES — IDs, values, time, LegalEntity, OwnershipClaim,
+                                markers, RNG, shared commands/events  (PackageId: Novolis.Economy)
 Novolis.Economy.Production      recipes, batches, inventory store, production engine
 Novolis.Economy.Markets         market estimates / observed trade book
-Novolis.Economy.Accounting      ledger, invoices, double-entry posting
+Novolis.Economy.Accounting      ledger, invoices, ownership engine (claim DTO in Primitives)
 Novolis.Economy.Finance         inter-firm term loans, interest, default hooks
-Novolis.Economy.Logistics       hubs, corridors, vehicles, itineraries, multi-leg shipments
+Novolis.Economy.Logistics       hub/corridor/vehicle models + engines (IDs in Primitives)
 Novolis.Economy.Population      cohorts, preference-weighted demand engine
 Novolis.Economy.Agents          heuristic economic agents (not ML) that enqueue commands
-Novolis.Economy.Simulation      EconomyWorld, phase pipeline, IEconomySimulation
+Novolis.Economy.Simulation      composition root: EconomyWorld, phase pipeline (not type home for parties)
 ```
+
+`Novolis.Economy` is the **Primitives** leaf: domain packages and Simulation depend on it. Simulation holds `Entities` / `OwnershipClaims` dictionaries/lists but does not define those types.
 
 ## World model
 
@@ -31,6 +34,7 @@ Novolis.Economy.Simulation      EconomyWorld, phase pipeline, IEconomySimulation
 
 - Product catalog and facility layouts
 - Firm ledgers (cash, inventory, revenue, COGS, wages, equity, transport fuel/toll expense)
+- Legal-entity metadata and ownership claims (types from Primitives)
 - FIFO inventory lots by `(firm, location, product)`
 - Posted retail prices and production plans
 - Freight routes (compat shim) / hub–corridor graph / vehicle classes / in-flight shipments
@@ -122,8 +126,8 @@ Inter-firm spot sales use `TransferGoodsForCash` (FIFO stock move + `PostCashSal
 - **`PriceElasticity`** policy → `DemandEngine` scales buy qty by relative price.
 - **`MoneyStock.Liquid`** — firm cash + household budgets.
 - **Finance** — `OriginateLoan` / `RepayLoan`, hourly interest onto notes, term default (`SettleFinance`) with **credit freeze**, facility absorb to lender, and ownership claim transfer.
-- **Legal entity** — `LegalEntity` metadata on `FirmId` (`Firm` / `Civic`), optional `RegistryId`, `CreditFrozen`. Households remain cohorts; ships/hubs/facilities are assets of a firm.
-- **Ownership** — `OwnershipClaim`, `AssignOwnership` / `TransferOwnership` / `DeclareDividend` (cash conserving). Ledger `Equity` account ≠ share claims.
+- **Legal entity** — `LegalEntity` / `LegalEntityKind` in **Primitives** (`Novolis.Economy`); Simulation stores them on the world. Optional `RegistryId`, `CreditFrozen`. Households remain cohorts; ships/hubs/facilities are assets of a firm.
+- **Ownership** — `OwnershipClaim` in Primitives; `OwnershipEngine` + dividends in Accounting. Ledger `Equity` account ≠ share claims.
 - **Capacity** — `UpgradeFacility` spends cash and scales manufacturing/assembly unit capacity.
 - **Agents** — heuristic economic agents (`IEconomicAgent`) that enqueue commands; not ML. Treasury skips credit-frozen borrowers.
 

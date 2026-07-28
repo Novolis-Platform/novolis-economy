@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Simulation</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Deterministic economic tick runner and ordered simulation phases for Novolis.</Description>
+    <Description>Deterministic economic tick runner and ordered phases. Holds LegalEntity/OwnershipClaim collections; those types are defined in Novolis.Economy primitives.</Description>
     <RootNamespace>Novolis.Economy.Simulation</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>

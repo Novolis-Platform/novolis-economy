@@ -1,6 +1,4 @@
-using Novolis.Economy;
-
-namespace Novolis.Economy.Simulation;
+namespace Novolis.Economy;
 
 /// <summary>Party kind for legal-entity metadata (keyed by <see cref="FirmId"/>).</summary>
 public enum LegalEntityKind
@@ -14,7 +12,7 @@ public enum LegalEntityKind
 
 /// <summary>
 /// Legal-entity metadata for a firm id. Ships, hubs, and facilities remain assets of an entity.
-/// Households stay cohorts (not entities this pass).
+/// Households stay cohorts (not entities this pass). Lives in the Primitives package.
 /// </summary>
 public sealed class LegalEntity
 {
