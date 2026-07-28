@@ -235,4 +235,10 @@ public sealed class ActiveShipment
   /// unloads cargo at the current hub and cancels so the hull is not permanently locked.
   /// </summary>
   public int HubStallHours { get; set; }
+
+  /// <summary>FTL/operating profile for this voyage (scales hours, fuel, and drive wear).</summary>
+  public TransitProfile TransitProfile { get; set; } = TransitProfile.StandardCommercial;
+
+  /// <summary>Drive wear accrued on this shipment while underway.</summary>
+  public decimal DriveWearAccrued { get; set; }
 }

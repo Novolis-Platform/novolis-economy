@@ -39,16 +39,20 @@ public sealed class ObservedMarketBook
       _tape[productId] = tape;
     }
 
-    tape.LastPrice = unitPrice;
-    tape.LastQuantity = quantity;
-    tape.CumulativeVolume += quantity;
-    tape.LastHour = hour;
-    tape.PreviousPrice = tape.HasHistory ? tape.PreviousPrice : unitPrice;
+    // Capture prior last before overwrite so Trend(Rising/Falling) can see a delta.
     if (tape.TradeCount > 0)
     {
       tape.PreviousPrice = tape.LastPrice;
     }
+    else
+    {
+      tape.PreviousPrice = unitPrice;
+    }
 
+    tape.LastPrice = unitPrice;
+    tape.LastQuantity = quantity;
+    tape.CumulativeVolume += quantity;
+    tape.LastHour = hour;
     tape.TradeCount++;
   }
 

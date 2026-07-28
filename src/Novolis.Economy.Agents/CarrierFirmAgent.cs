@@ -17,14 +17,19 @@ public sealed record CarrierFirmAgentPolicy(
   Func<ProductId, decimal> GatePrice,
   decimal FuelBuyLimitPrice,
   decimal MinBunkerFuel = 4m,
-  bool AllowFuelProcurement = true);
+  bool AllowFuelProcurement = true,
+  Func<ProductId, TransitProfile>? ChooseTransitProfile = null,
+  Func<bool>? CanOperate = null,
+  Func<TransportHubId, bool>? AvoidHub = null,
+  Func<decimal>? EffectiveMinMargin = null,
+  Func<ProductId, TransportHubId, TransportHubId, TransitProfile, bool>? RefuseHaul = null);
 
 /// <summary>Clears cross-hub sell@A + buy@B spreads via haul (heuristics + RNG ties).</summary>
 public sealed class CarrierFirmAgent : IEconomicAgent
 {
   private readonly CarrierFirmAgentPolicy _policy;
   private readonly Dictionary<InventoryLocationId, AgentSite> _siteByLoc;
-  private readonly Dictionary<(Guid, Guid), Itinerary?> _routeCache = new();
+  private readonly Dictionary<(Guid, Guid, TransitProfile), Itinerary?> _routeCache = new();
   private readonly ulong _rngSalt;
   private TransportHubId _currentHub;
   private SpreadJob? _activeHaul;
@@ -85,6 +90,12 @@ public sealed class CarrierFirmAgent : IEconomicAgent
       return;
     }
 
+    if (_policy.CanOperate is { } gate && !gate())
+    {
+      LastDecision = "registry hold — cannot operate";
+      return;
+    }
+
     if (world.PendingPlanShipments.Any(p => p.FirmId.Equals(FirmId)))
     {
       LastDecision = "awaiting departure";
@@ -107,7 +118,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
             && haul.OriginLoc.Equals(site.LocationId)
             && have + 0.01m >= Math.Min(haul.Quantity, 1m))
         {
-          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, haul.OriginHub, haul.DestHub)))
+          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, haul.OriginHub, haul.DestHub, sku)))
           {
             LastDecision = $"bunkering @ {site.Name}";
             LastEval = haul.Summary;
@@ -115,10 +126,11 @@ public sealed class CarrierFirmAgent : IEconomicAgent
           }
 
           var qty = Math.Min(have, haul.Quantity);
+          var haulProfile = ProfileFor(sku);
           context.Enqueue(new PlanShipment(
             FirmId, haul.OriginHub.Value, haul.DestHub.Value,
-            sku, Quantity.From(qty), _policy.VehicleClassId.Value));
-          LastDecision = $"haul {haul.Name} ×{qty:0}";
+            sku, Quantity.From(qty), _policy.VehicleClassId.Value, (int)haulProfile));
+          LastDecision = $"haul {haul.Name} ×{qty:0} [{haulProfile}]";
           LastEval = haul.Summary;
           return;
         }
@@ -138,7 +150,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
         var outbound = BestOutboundFrom(context, site, sku, have, rng);
         if (outbound is not null)
         {
-          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, outbound.OriginHub, outbound.DestHub)))
+          if (!EnsureBunker(context, site, FirstLegFuelNeed(context, outbound.OriginHub, outbound.DestHub, sku)))
           {
             _activeHaul = outbound;
             LastDecision = $"bunkering @ {site.Name}";
@@ -148,10 +160,11 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
           _activeHaul = outbound;
           var qty = Math.Min(have, outbound.Quantity);
+          var outboundProfile = ProfileFor(sku);
           context.Enqueue(new PlanShipment(
             FirmId, outbound.OriginHub.Value, outbound.DestHub.Value,
-            sku, Quantity.From(qty), _policy.VehicleClassId.Value));
-          LastDecision = $"haul {outbound.Name} ×{qty:0}";
+            sku, Quantity.From(qty), _policy.VehicleClassId.Value, (int)outboundProfile));
+          LastDecision = $"haul {outbound.Name} ×{qty:0} [{outboundProfile}]";
           LastEval = outbound.Summary;
           return;
         }
@@ -165,9 +178,15 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     TopUpFuelAt(context, HomeSite());
     HubOrderQuotes.CancelOpen(context, FirmId, side: HubOrderSide.Buy);
 
+    var minMargin = _policy.EffectiveMinMargin?.Invoke() ?? _policy.MinMargin;
     var allJobs = BuildSpreadJobs(context);
     var candidates = allJobs
-      .Where(j => j.Margin >= _policy.MinMargin)
+      .Where(j => j.Margin >= minMargin)
+      .Where(j =>
+      {
+        var profile = ProfileFor(j.Product);
+        return _policy.RefuseHaul?.Invoke(j.Product, j.OriginHub, j.DestHub, profile) != true;
+      })
       .OrderByDescending(j => j.Margin)
       .ThenBy(_ => rng.NextDouble())
       .ToList();
@@ -188,7 +207,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
     _activeHaul = best;
     var originSite = _siteByLoc[best.OriginLoc];
-    var fuelNeed = FirstLegFuelNeed(context, best.OriginHub, best.DestHub);
+    var fuelNeed = FirstLegFuelNeed(context, best.OriginHub, best.DestHub, best.Product);
     if (!EnsureBunker(context, originSite, fuelNeed))
     {
       context.Enqueue(new PostHubOrder(
@@ -202,20 +221,25 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     context.Enqueue(new PostHubOrder(
       FirmId, best.OriginLoc, best.Product, HubOrderSide.Buy,
       Quantity.From(best.Quantity), Money.From(best.LiftLimit)));
+    var profile = ProfileFor(best.Product);
     context.Enqueue(new PlanShipment(
       FirmId, best.OriginHub.Value, best.DestHub.Value,
-      best.Product, Quantity.From(best.Quantity), _policy.VehicleClassId.Value));
-    LastDecision = $"lift+haul {best.Name} qty {best.Quantity:0}";
+      best.Product, Quantity.From(best.Quantity), _policy.VehicleClassId.Value, (int)profile));
+    LastDecision = $"lift+haul {best.Name} qty {best.Quantity:0} [{profile}]";
     LastEval = best.Summary;
   }
+
+  private TransitProfile ProfileFor(ProductId product) =>
+    _policy.ChooseTransitProfile?.Invoke(product) ?? TransitProfile.StandardCommercial;
 
   private AgentSite HomeSite() =>
     _policy.Sites.FirstOrDefault(s => s.HubId.Equals(_currentHub)) ?? _policy.Sites[0];
 
-  private decimal FirstLegFuelNeed(AgentContext context, TransportHubId origin, TransportHubId dest)
+  private decimal FirstLegFuelNeed(AgentContext context, TransportHubId origin, TransportHubId dest, ProductId? product = null)
   {
     var floor = _policy.MinBunkerFuel;
-    if (!TryGetRoute(origin, dest, context.World, out var itinerary)
+    var profile = product is { } p ? ProfileFor(p) : TransitProfile.StandardCommercial;
+    if (!TryGetRoute(origin, dest, context.World, profile, out var itinerary)
         || itinerary is null
         || itinerary.LegCount == 0)
     {
@@ -223,7 +247,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     }
 
     var first = context.World.Corridors[itinerary.CorridorIds[0]];
-    var burn = ItineraryPlanner.FuelBurnForLeg(first, _policy.Vehicle).Value;
+    var burn = ItineraryPlanner.FuelBurnForLeg(first, _policy.Vehicle, profile).Value;
     return Math.Max(floor, burn);
   }
 
@@ -315,13 +339,19 @@ public sealed class CarrierFirmAgent : IEconomicAgent
         continue;
       }
 
-      var qty = Math.Min(have, Math.Min(buy.Remaining.Value, _policy.Vehicle.CargoCapacity.Value));
-      if (qty < 1m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, out var itinerary))
+      if (_policy.AvoidHub?.Invoke(dest.HubId.Value) == true)
       {
         continue;
       }
 
-      var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
+      var qty = Math.Min(have, Math.Min(buy.Remaining.Value, _policy.Vehicle.CargoCapacity.Value));
+      var profile = ProfileFor(sku);
+      if (qty < 1m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, profile, out var itinerary))
+      {
+        continue;
+      }
+
+      var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost, profile);
       var cog = _policy.GatePrice(sku);
       var margin = qty * buy.LimitPrice.Amount - qty * cog - est.TotalVariableCost.Amount;
       // Holding inventory: always consider destinations — even negative Δ — so the hull is not trapped.
@@ -329,7 +359,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
         $"{Short(sku)} {ShortName(origin.Name)}→{ShortName(dest.Name)}",
         origin.HubId.Value, dest.HubId.Value, origin.LocationId, dest.LocationId,
         sku, qty, cog, buy.LimitPrice.Amount, margin,
-        $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0}");
+        $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0} [{profile}]");
       if (best is null || job.Margin > best.Margin)
       {
         best = job;
@@ -410,26 +440,28 @@ public sealed class CarrierFirmAgent : IEconomicAgent
               || buy.LocationId.Equals(sell.LocationId)
               || buy.LimitPrice.Amount < sell.LimitPrice.Amount
               || !_siteByLoc.TryGetValue(buy.LocationId, out var dest)
-              || dest.HubId is null)
+              || dest.HubId is null
+              || _policy.AvoidHub?.Invoke(dest.HubId.Value) == true)
           {
             continue;
           }
 
           var qty = Math.Min(Math.Min(sell.Remaining.Value, buy.Remaining.Value), _policy.Vehicle.CargoCapacity.Value);
-          if (qty < 2m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, out var itinerary))
+          var profile = ProfileFor(sell.ProductId);
+          if (qty < 2m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, profile, out var itinerary))
           {
             continue;
           }
 
           matched++;
-          var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost);
+          var est = HaulCostEstimator.Estimate(itinerary, world.Corridors, _policy.Vehicle, wage, fuelCost, profile);
           var lift = Math.Min(buy.LimitPrice.Amount, sell.LimitPrice.Amount * 1.12m);
           var margin = qty * buy.LimitPrice.Amount - qty * lift - est.TotalVariableCost.Amount;
           jobs.Add(new SpreadJob(
             $"{Short(sell.ProductId)} {ShortName(origin.Name)}→{ShortName(dest.Name)}",
             origin.HubId.Value, dest.HubId.Value, sell.LocationId, dest.LocationId,
             sell.ProductId, qty, lift, buy.LimitPrice.Amount, margin,
-            $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0}"));
+            $"Δ{margin:0.#} haul {est.TotalVariableCost.Amount:0} [{profile}]"));
         }
       }
     }
@@ -438,9 +470,13 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   }
 
   private bool TryGetRoute(
-    TransportHubId origin, TransportHubId dest, EconomyWorld world, out Itinerary itinerary)
+    TransportHubId origin,
+    TransportHubId dest,
+    EconomyWorld world,
+    TransitProfile profile,
+    out Itinerary itinerary)
   {
-    var key = (origin.Value, dest.Value);
+    var key = (origin.Value, dest.Value, profile);
     if (_routeCache.TryGetValue(key, out var cached))
     {
       if (cached is null)
@@ -454,7 +490,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     }
 
     if (!ItineraryPlanner.TryPlan(
-          origin, dest, _policy.Vehicle.CargoCapacity, _policy.Vehicle, world.Corridors, out itinerary))
+          origin, dest, _policy.Vehicle.CargoCapacity, _policy.Vehicle, world.Corridors, out itinerary, profile))
     {
       _routeCache[key] = null;
       return false;

@@ -56,7 +56,8 @@ public static class LogisticsEngine
     SimulationHour now,
     IReadOnlyDictionary<TransportCorridorId, TransportCorridor> corridors,
     out Money unitCost,
-    out string? failReason)
+    out string? failReason,
+    TransitProfile profile = TransitProfile.StandardCommercial)
   {
     unitCost = Money.Zero;
     failReason = null;
@@ -104,11 +105,12 @@ public static class LogisticsEngine
       SegmentHoursRemaining = Math.Max(0, originHub.DwellHours),
       PlannedLegBurn = Quantity.Zero,
       LegHoursTotal = 0,
+      TransitProfile = profile,
     };
 
     if (fuelProductId is { } fuelId)
     {
-      var needed = ItineraryPlanner.FuelBurnForLeg(firstCorridor, vehicle);
+      var needed = ItineraryPlanner.FuelBurnForLeg(firstCorridor, vehicle, profile);
       if (!TryBunker(inventory, firmId, originHub, fuelId, needed, vehicle, shipment, out _))
       {
         inventory.Add(
@@ -167,6 +169,7 @@ public static class LogisticsEngine
     var fuelBurnByFirm = new Dictionary<FirmId, Money>();
     var tollsPaid = Money.Zero;
     var fuelBunkered = Quantity.Zero;
+    var driveWear = 0m;
     var legStarts = new List<(ActiveShipment Shipment, TransportCorridorId CorridorId)>();
     var hubArrivals = new List<(ActiveShipment Shipment, TransportHubId HubId)>();
 
@@ -274,6 +277,22 @@ public static class LogisticsEngine
           shipment.CrewLaborThisTick = crew;
           crewByFirm[shipment.FirmId] = crewByFirm.GetValueOrDefault(shipment.FirmId) + crew;
 
+          var loadFrac = shipment.Vehicle.CargoCapacity.Value <= 0m
+            ? 1m
+            : shipment.Quantity.Value / shipment.Vehicle.CargoCapacity.Value;
+          var legDifficulty = 1m;
+          if (shipment.Itinerary.LegCount > 0
+              && shipment.LegIndex < shipment.Itinerary.LegCount
+              && corridors.TryGetValue(shipment.Itinerary.CorridorIds[shipment.LegIndex], out var wearCor))
+          {
+            legDifficulty = wearCor.Difficulty;
+          }
+
+          var wearTick = TransitProfiles.WearForUnderwayHour(
+            shipment.TransitProfile, loadFrac, legDifficulty);
+          shipment.DriveWearAccrued += wearTick;
+          driveWear += wearTick;
+
           if (shipment.FuelProductId is not null && shipment.LegHoursTotal > 0)
           {
             var burnThisHour = Quantity.From(shipment.PlannedLegBurn.Value / shipment.LegHoursTotal);
@@ -351,7 +370,8 @@ public static class LogisticsEngine
       tollsPaid,
       fuelBunkered,
       legStarts,
-      hubArrivals);
+      hubArrivals,
+      driveWear);
   }
 
   /// <summary>
@@ -413,7 +433,7 @@ public static class LogisticsEngine
     }
 
     var next = corridors[shipment.Itinerary.CorridorIds[shipment.LegIndex]];
-    var burn = ItineraryPlanner.FuelBurnForLeg(next, shipment.Vehicle);
+    var burn = ItineraryPlanner.FuelBurnForLeg(next, shipment.Vehicle, shipment.TransitProfile);
     var deficit = Quantity.From(Math.Max(0m, burn.Value - shipment.OnboardFuel.Value));
     if (deficit.Value > 0m)
     {
@@ -571,7 +591,7 @@ public static class LogisticsEngine
   {
     var corridorId = shipment.Itinerary.CorridorIds[shipment.LegIndex];
     var corridor = corridors[corridorId];
-    var burn = ItineraryPlanner.FuelBurnForLeg(corridor, shipment.Vehicle!);
+    var burn = ItineraryPlanner.FuelBurnForLeg(corridor, shipment.Vehicle!, shipment.TransitProfile);
     if (shipment.FuelProductId is not null && shipment.OnboardFuel.Value + 0.0000001m < burn.Value)
     {
       shipment.Phase = ShipmentPhase.Loading;
@@ -592,7 +612,7 @@ public static class LogisticsEngine
     }
 
     shipment.Phase = ShipmentPhase.Underway;
-    shipment.LegHoursTotal = Math.Max(1, corridor.TransitHours);
+    shipment.LegHoursTotal = TransitProfiles.EffectiveHours(corridor, shipment.TransitProfile);
     shipment.SegmentHoursRemaining = shipment.LegHoursTotal;
     shipment.PlannedLegBurn = burn;
     legStarts?.Add((shipment, corridorId));
@@ -675,4 +695,5 @@ public sealed record LogisticsTickResult(
   Money TollsPaid,
   Quantity FuelBunkered,
   IReadOnlyList<(ActiveShipment Shipment, TransportCorridorId CorridorId)> LegStarts,
-  IReadOnlyList<(ActiveShipment Shipment, TransportHubId HubId)> HubArrivals);
+  IReadOnlyList<(ActiveShipment Shipment, TransportHubId HubId)> HubArrivals,
+  decimal DriveWear = 0m);

@@ -3,7 +3,7 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Logistics;
 
-/// <summary>Finds a feasible corridor path between hubs (Dijkstra on transit hours).</summary>
+/// <summary>Finds a feasible corridor path between hubs (Dijkstra on profile-scaled transit hours).</summary>
 public static class ItineraryPlanner
 {
   /// <summary>
@@ -16,7 +16,8 @@ public static class ItineraryPlanner
     Quantity cargoQuantity,
     VehicleClass vehicle,
     IReadOnlyDictionary<TransportCorridorId, TransportCorridor> corridors,
-    out Itinerary itinerary)
+    out Itinerary itinerary,
+    TransitProfile profile = TransitProfile.StandardCommercial)
   {
     itinerary = Itinerary.Empty;
     if (origin.Equals(destination))
@@ -58,14 +59,14 @@ public static class ItineraryPlanner
 
       foreach (var edge in edges.OrderBy(e => e.Id.Value))
       {
-        var burn = FuelBurnForLeg(edge, vehicle);
+        var burn = FuelBurnForLeg(edge, vehicle, profile);
         if (burn.Value > vehicle.FuelTankCapacity.Value)
         {
           // Cannot traverse even with a full tank (range scarcity).
           continue;
         }
 
-        var nextCost = cost + Math.Max(1, edge.TransitHours);
+        var nextCost = cost + TransitProfiles.EffectiveHours(edge, profile);
         var known = dist.GetValueOrDefault(edge.To, long.MaxValue);
         if (nextCost >= known)
         {
@@ -108,12 +109,16 @@ public static class ItineraryPlanner
     return itinerary.LegCount > 0;
   }
 
-  /// <summary>Fuel quantity required to traverse a corridor.</summary>
-  public static Quantity FuelBurnForLeg(TransportCorridor corridor, VehicleClass vehicle)
+  /// <summary>Fuel quantity required to traverse a corridor under a transit profile.</summary>
+  public static Quantity FuelBurnForLeg(
+    TransportCorridor corridor,
+    VehicleClass vehicle,
+    TransitProfile profile = TransitProfile.StandardCommercial)
   {
-    var hours = Math.Max(1, corridor.TransitHours);
+    var hours = Math.Max(1m, corridor.TransitHours);
     var difficulty = corridor.Difficulty <= 0m ? 1m : corridor.Difficulty;
-    var burn = hours * difficulty * vehicle.FuelBurnPerDifficultyHour;
+    var factors = TransitProfiles.Factors(profile);
+    var burn = hours * difficulty * vehicle.FuelBurnPerDifficultyHour * factors.FuelFactor;
     return Quantity.From(Math.Round(burn, 6, MidpointRounding.AwayFromZero));
   }
 }

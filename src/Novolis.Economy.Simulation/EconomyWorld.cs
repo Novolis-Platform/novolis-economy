@@ -461,4 +461,7 @@ public sealed class TransportAggregates
 
   /// <summary>Count of completed multi-leg deliveries (for average transit).</summary>
   public int TransitSampleCount { get; set; }
+
+  /// <summary>Accumulated drive wear units from underway hours × profile wear factor.</summary>
+  public decimal DriveWearAccumulated { get; set; }
 }

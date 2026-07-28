@@ -717,7 +717,8 @@ public sealed class AcquireInputsPhase : ISimulationPhase
             cmd.Quantity,
             vehicle,
             world.Corridors,
-            out var itinerary))
+            out var itinerary,
+            TransitProfiles.FromCode(cmd.TransitProfileCode)))
       {
         world.TransportStats.FailedPlans++;
         context.State.AppendEvent(new ShipmentPlanFailed(hour, cmd.FirmId, cmd.ProductId, "no-feasible-path"));
@@ -736,7 +737,8 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         hour,
         world.Corridors,
         out _,
-        out var failReason);
+        out var failReason,
+        TransitProfiles.FromCode(cmd.TransitProfileCode));
       if (shipment is null)
       {
         world.TransportStats.FailedPlans++;
@@ -959,6 +961,7 @@ public sealed class TransportInventoryPhase : ISimulationPhase
     world.TransportStats.FuelBunkered = Quantity.From(world.TransportStats.FuelBunkered.Value + result.FuelBunkered.Value);
     world.TransportStats.TollsPaid = Money.From(world.TransportStats.TollsPaid.Amount + result.TollsPaid.Amount);
     world.TransportStats.CrewLaborHours += result.CrewLaborByFirm.Values.Sum();
+    world.TransportStats.DriveWearAccumulated += result.DriveWear;
 
     foreach (var shipment in result.Delivered)
     {
