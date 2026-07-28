@@ -2,6 +2,12 @@
 
 Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` line.
 
+## 2026.1.x — Economic agents + finance
+
+- `Novolis.Economy.Finance` — term loans, interest accrual, repayment, default hooks; `SettleFinance` phase
+- `Novolis.Economy.Agents` — heuristic economic agents (Extractive / Manufacturing / Retail / Carrier / Treasury); not ML
+- Account roles: NotesReceivable / NotesPayable / InterestIncome / InterestExpense
+
 ## 2026.1.x — Simulation perf
 
 - Cache world fingerprint across `Enqueue` (recompute once per tick)
