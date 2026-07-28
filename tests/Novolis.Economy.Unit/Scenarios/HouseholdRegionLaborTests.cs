@@ -48,7 +48,6 @@ public sealed class HouseholdRegionLaborTests
 
     var builder = new EconomyWorldBuilder(new EconomyPolicy
     {
-      PeoplePerHousehold = 4,
       LaborHoursPerOutputUnit = 1m,
       UseRegionLaborPools = true,
     });
@@ -57,13 +56,13 @@ public sealed class HouseholdRegionLaborTests
     builder.AddFacility(new FacilityBinding(facilityId, firm, loc, null, MfgLayout(), area));
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Guid.Parse("00000000-0000-4000-8000-0000000000a6")),
-      new PopulationCount(4),
+      new PopulationCount(1),
       Money.From(500m),
       Prefs(),
       area,
       HouseholdProductivityKind.Mean,
       hh));
-    builder.SetLabor(firm, 999m); // ignored when region-only facilities
+    builder.SetLabor(firm, 999m); // ignored for region mfg firms
     var world = builder.Build();
     world.ProductionPlans[(firm, facilityId, product)] = Quantity.From(100m);
 
@@ -82,7 +81,6 @@ public sealed class HouseholdRegionLaborTests
 
     var builder = new EconomyWorldBuilder(new EconomyPolicy
     {
-      PeoplePerHousehold = 4,
       HouseholdComfortThresholdPerHousehold = Money.From(50m),
       CohortBudgetResetMode = CohortBudgetResetMode.CarryForward,
     });
@@ -91,7 +89,7 @@ public sealed class HouseholdRegionLaborTests
     builder.AddFirm(issuer, "Issuer", Money.From(100m));
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Guid.Parse("00000000-0000-4000-8000-0000000000b4")),
-      new PopulationCount(4),
+      new PopulationCount(1),
       Money.From(50m), // exactly at comfort floor (50 × 1 hh)
       Prefs(),
       area,
@@ -118,7 +116,6 @@ public sealed class HouseholdRegionLaborTests
 
     var builder = new EconomyWorldBuilder(new EconomyPolicy
     {
-      PeoplePerHousehold = 4,
       HouseholdComfortThresholdPerHousehold = Money.From(50m),
       CohortBudgetResetMode = CohortBudgetResetMode.CarryForward,
     });
@@ -126,7 +123,7 @@ public sealed class HouseholdRegionLaborTests
     builder.AddFirm(issuer, "Issuer", Money.From(100m));
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Guid.Parse("00000000-0000-4000-8000-0000000000c3")),
-      new PopulationCount(4),
+      new PopulationCount(1),
       Money.From(200m),
       Prefs(),
       area,
@@ -145,10 +142,10 @@ public sealed class HouseholdRegionLaborTests
   }
 
   [Test]
-  public async Task LivingCapacity_ClampsCohortPopulation()
+  public async Task LivingCapacity_ClampsCohortHouseholds()
   {
     var area = GeographicAreaId.From(Guid.Parse("aaaaaaaa-0000-4000-8000-000000000031"));
-    var builder = new EconomyWorldBuilder(new EconomyPolicy { PeoplePerHousehold = 4 });
+    var builder = new EconomyWorldBuilder();
     builder.AddRegion(area, livingCapacityHouseholds: 1, productionSlots: 2);
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Guid.Parse("00000000-0000-4000-8000-0000000000d1")),
@@ -158,7 +155,7 @@ public sealed class HouseholdRegionLaborTests
       area));
     var world = builder.Build();
     await Assert.That(world.Cohorts.Count).IsEqualTo(1);
-    await Assert.That(world.Cohorts[0].Definition.Population.Value).IsEqualTo(4);
+    await Assert.That(world.Cohorts[0].Definition.Population.Value).IsEqualTo(1);
     await Assert.That(world.UsedLivingHouseholds(area)).IsEqualTo(1);
   }
 
@@ -232,7 +229,6 @@ public sealed class HouseholdRegionLaborTests
 
     var builder = new EconomyWorldBuilder(new EconomyPolicy
     {
-      PeoplePerHousehold = 4,
       HouseholdComfortThresholdPerHousehold = Money.From(50m),
       CohortBudgetResetMode = CohortBudgetResetMode.CarryForward,
     });
@@ -240,7 +236,7 @@ public sealed class HouseholdRegionLaborTests
     builder.AddFirm(issuer, "Issuer", Money.From(100m));
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Guid.Parse("00000000-0000-4000-8000-000000000063")),
-      new PopulationCount(4),
+      new PopulationCount(1),
       Money.From(50m),
       Prefs(),
       area,

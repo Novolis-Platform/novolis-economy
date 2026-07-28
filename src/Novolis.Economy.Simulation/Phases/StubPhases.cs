@@ -487,7 +487,6 @@ public sealed class AllocateLaborPhase : ISimulationPhase
   /// </summary>
   public static void ApplyRegionLaborPools(EconomyWorld world)
   {
-    var peoplePer = world.Policy.PeoplePerHousehold;
     var pools = new Dictionary<GeographicAreaId, decimal>();
     foreach (var cohort in world.Cohorts)
     {
@@ -499,8 +498,7 @@ public sealed class AllocateLaborPhase : ISimulationPhase
 
       var hours = HouseholdMath.LaborHoursPerTick(
         cohort.Definition.Population,
-        cohort.Definition.Productivity,
-        peoplePer);
+        cohort.Definition.Productivity);
       pools[area] = pools.GetValueOrDefault(area) + hours;
     }
 

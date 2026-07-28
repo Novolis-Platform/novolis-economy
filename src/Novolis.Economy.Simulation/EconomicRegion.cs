@@ -23,7 +23,7 @@ public sealed class EconomicRegion
   /// <summary>Region / habitat id.</summary>
   public GeographicAreaId AreaId { get; }
 
-  /// <summary>Max household count (from headcount / people-per-household).</summary>
+  /// <summary>Max household count living in this habitat.</summary>
   public int LivingCapacityHouseholds { get; set; }
 
   /// <summary>Max facilities with manufacturing or assembly units.</summary>

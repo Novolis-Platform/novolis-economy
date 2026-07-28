@@ -148,21 +148,19 @@ public sealed class EconomyWorldBuilder
   /// <summary>Adds a consumer cohort as a household entity; clamps living capacity when region exists.</summary>
   public EconomyWorldBuilder AddCohort(ConsumerCohort cohort)
   {
-    var peoplePer = _world.Policy.PeoplePerHousehold;
-    var pop = cohort.Population;
+    var households = cohort.Population;
     if (_world.Regions.TryGetValue(cohort.Area, out var region))
     {
       var used = _world.UsedLivingHouseholds(cohort.Area);
       var remaining = Math.Max(0, region.LivingCapacityHouseholds - used);
-      var want = HouseholdMath.Count(pop, peoplePer);
+      var want = HouseholdMath.Count(households);
       if (want > remaining)
       {
-        var maxPeople = remaining <= 0 ? 0 : remaining * peoplePer;
-        pop = new PopulationCount(maxPeople);
+        households = new PopulationCount(remaining);
       }
     }
 
-    if (pop.Value <= 0)
+    if (HouseholdMath.Count(households) <= 0)
     {
       return this;
     }
@@ -171,7 +169,7 @@ public sealed class EconomyWorldBuilder
     _world.EnsureHousehold(householdId, $"Household {cohort.Id.Value.ToString("N")[..8]}");
     var linked = cohort with
     {
-      Population = pop,
+      Population = households,
       HouseholdFirmId = householdId,
     };
     _world.Cohorts.Add(new CohortState(linked));

@@ -3,8 +3,8 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Population;
 
-/// <summary>Population count for a cohort.</summary>
-/// <param name="Value">Number of people.</param>
+/// <summary>Household count for a cohort (economic resolution; not headcount).</summary>
+/// <param name="Value">Number of households.</param>
 public readonly record struct PopulationCount(long Value)
 {
   /// <inheritdoc />
@@ -29,7 +29,7 @@ public sealed record PreferenceProfile(
 
 /// <summary>Aggregated consumer segment (household sector at region resolution).</summary>
 /// <param name="Id">Cohort id.</param>
-/// <param name="Population">Headcount.</param>
+/// <param name="Population">Household count (not headcount).</param>
 /// <param name="DisposableIncome">Per-period disposable income stub / opening budget seed.</param>
 /// <param name="Preferences">Preference profile.</param>
 /// <param name="Area">Home geographic area (habitat/region).</param>

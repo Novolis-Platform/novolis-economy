@@ -62,9 +62,6 @@ public sealed class EconomyPolicy
   /// </summary>
   public decimal PriceElasticity { get; init; }
 
-  /// <summary>Headcount per household for labor and living-capacity math.</summary>
-  public int PeoplePerHousehold { get; init; } = 4;
-
   /// <summary>Comfort floor per household; invest/lend require budget above floor × count.</summary>
   public Money HouseholdComfortThresholdPerHousehold { get; init; } = Money.From(50m);
 
@@ -286,7 +283,7 @@ public sealed class EconomyWorld
   public int UsedLivingHouseholds(GeographicAreaId area) =>
     Cohorts
       .Where(c => c.Definition.Area.Equals(area))
-      .Sum(c => HouseholdMath.Count(c.Definition.Population, Policy.PeoplePerHousehold));
+      .Sum(c => HouseholdMath.Count(c.Definition.Population));
 
   /// <summary>Mfg/assembly facilities in an area.</summary>
   public int UsedProductionSlots(GeographicAreaId area) =>
@@ -308,8 +305,7 @@ public sealed class EconomyWorld
   public Money ComfortFloor(CohortState cohort) =>
     HouseholdMath.ComfortFloor(
       cohort.Definition.Population,
-      Policy.HouseholdComfortThresholdPerHousehold,
-      Policy.PeoplePerHousehold);
+      Policy.HouseholdComfortThresholdPerHousehold);
 
   /// <summary>True when budget is strictly above the comfort floor.</summary>
   public bool IsAboveComfort(CohortState cohort) =>
