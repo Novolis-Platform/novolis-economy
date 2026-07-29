@@ -12,6 +12,12 @@ public sealed class SimulationContext(SimulationState state, IEconomyRandom rand
 
   /// <summary>Deterministic random source.</summary>
   public IEconomyRandom Random { get; } = random;
+
+  /// <summary>
+  /// When true, non-essential hourly phases are skipped (decision apply + transport + hub match only).
+  /// Used for UI max-speed free-run; clear to resume the full economy tick.
+  /// </summary>
+  public bool ThroughputMode { get; set; }
 }
 
 /// <summary>One ordered simulation phase.</summary>

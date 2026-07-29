@@ -41,12 +41,22 @@ public sealed class PhasePipeline
     foreach (var phase in _phases)
     {
       cancellationToken.ThrowIfCancellationRequested();
+      if (context.ThroughputMode && !IsThroughputPhase(phase.Order))
+      {
+        continue;
+      }
+
       await phase.ExecuteAsync(context, cancellationToken).ConfigureAwait(false);
       executed.Add(phase.Order);
     }
 
     return executed.ToImmutable();
   }
+
+  private static bool IsThroughputPhase(SimulationPhaseOrder order) =>
+    order is SimulationPhaseOrder.ApplyDecisions
+      or SimulationPhaseOrder.MatchHubOrders
+      or SimulationPhaseOrder.TransportInventory;
 
   /// <summary>Creates the default twelve skeleton phases.</summary>
   public static PhasePipeline CreateDefault() => new(DefaultPhases.Create());

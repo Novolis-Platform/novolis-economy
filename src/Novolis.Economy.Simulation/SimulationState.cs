@@ -11,6 +11,9 @@ public sealed class SimulationState
   private readonly List<SimulationPhaseOrder> _lastTickPhases = [];
   private ulong _lastRngState;
   private ulong _cachedWorldFingerprint;
+  private ulong _hash;
+  private bool _worldFingerprintDirty;
+  private bool _hashDirty;
 
   /// <summary>Creates state at epoch with the given seed and an empty world.</summary>
   public SimulationState(ulong seed)
@@ -48,8 +51,15 @@ public sealed class SimulationState
   /// <summary>Phases that ran during the most recent tick (for tests).</summary>
   public IReadOnlyList<SimulationPhaseOrder> LastTickPhases => _lastTickPhases;
 
-  /// <summary>Deterministic fingerprint of clock, world, and RNG.</summary>
-  public ulong Hash { get; private set; }
+  /// <summary>Deterministic fingerprint of clock, world, and RNG (lazy).</summary>
+  public ulong Hash
+  {
+    get
+    {
+      EnsureHash();
+      return _hash;
+    }
+  }
 
   /// <summary>Enqueues a command for the next ApplyDecisions phase.</summary>
   public void EnqueueCommand(IEconomyCommand command)
@@ -57,7 +67,7 @@ public sealed class SimulationState
     ArgumentNullException.ThrowIfNull(command);
     _pendingCommands.Add(command);
     // World is unchanged until the next tick — reuse cached fingerprint.
-    RecomputeHash();
+    _hashDirty = true;
   }
 
   /// <summary>Dequeues all pending commands (used by ApplyDecisions).</summary>
@@ -82,14 +92,32 @@ public sealed class SimulationState
     _lastTickPhases.AddRange(phases);
     Clock = Clock.AddHours(1);
     _lastRngState = rngState;
-    _cachedWorldFingerprint = World.Fingerprint();
-    RecomputeHash();
+    // Defer World.Fingerprint — dominant cost of long free-runs; Hash getter refreshes.
+    _worldFingerprintDirty = true;
+    _hashDirty = true;
   }
 
   /// <summary>Begins a tick; clears last-tick phase list.</summary>
   internal void BeginTick()
   {
     _lastTickPhases.Clear();
+  }
+
+  private void EnsureHash()
+  {
+    if (!_hashDirty && !_worldFingerprintDirty)
+    {
+      return;
+    }
+
+    if (_worldFingerprintDirty)
+    {
+      _cachedWorldFingerprint = World.Fingerprint();
+      _worldFingerprintDirty = false;
+    }
+
+    RecomputeHash();
+    _hashDirty = false;
   }
 
   private void RecomputeHash()
@@ -103,7 +131,7 @@ public sealed class SimulationState
     hash = (hash ^ (ulong)_events.Count) * prime;
     hash = (hash ^ _lastRngState) * prime;
     hash = (hash ^ _cachedWorldFingerprint) * prime;
-    Hash = hash;
+    _hash = hash;
   }
 }
 

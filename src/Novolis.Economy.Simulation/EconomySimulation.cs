@@ -41,12 +41,31 @@ public sealed class EconomySimulation : IEconomySimulation
   /// <inheritdoc />
   public SimulationState State { get; }
 
+  /// <summary>
+  /// When true, hourly ticks skip non-essential economy phases (see <see cref="SimulationContext.ThroughputMode"/>).
+  /// </summary>
+  public bool ThroughputMode
+  {
+    get => _context.ThroughputMode;
+    set => _context.ThroughputMode = value;
+  }
+
   /// <inheritdoc />
   public void Enqueue(IEconomyCommand command) => State.EnqueueCommand(command);
 
   /// <inheritdoc />
   public async ValueTask<SimulationResult> AdvanceAsync(
     SimulationDuration duration,
+    CancellationToken cancellationToken = default)
+    => await AdvanceAsync(duration, computeFinalHash: true, cancellationToken).ConfigureAwait(false);
+
+  /// <summary>
+  /// Advances the simulation. When <paramref name="computeFinalHash"/> is false, skips the
+  /// expensive world fingerprint (callers that need <see cref="SimulationState.Hash"/> can read it later).
+  /// </summary>
+  public async ValueTask<SimulationResult> AdvanceAsync(
+    SimulationDuration duration,
+    bool computeFinalHash,
     CancellationToken cancellationToken = default)
   {
     ArgumentOutOfRangeException.ThrowIfNegative(duration.Hours);
@@ -62,7 +81,7 @@ public sealed class EconomySimulation : IEconomySimulation
     return new SimulationResult(
       duration.Hours,
       State.Events.Count - eventsBefore,
-      State.Hash);
+      computeFinalHash ? State.Hash : 0UL);
   }
 }
 
