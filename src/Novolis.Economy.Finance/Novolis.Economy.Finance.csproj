@@ -9,5 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Accounting\Novolis.Economy.Accounting.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
   </ItemGroup>
 </Project>
