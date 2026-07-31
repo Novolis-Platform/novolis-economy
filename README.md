@@ -4,17 +4,17 @@
 
 ## Published packages
 
-| Package | Install | Package README |
-|---------|---------|----------------|
-| `Novolis.Economy.Core` | `dotnet add package Novolis.Economy.Core` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Core/README.md) — **economic kernel** |
-| `Novolis.Economy.Production` | `dotnet add package Novolis.Economy.Production` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Production/README.md) |
-| `Novolis.Economy.Markets` | `dotnet add package Novolis.Economy.Markets` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Markets/README.md) |
-| `Novolis.Economy.Accounting` | `dotnet add package Novolis.Economy.Accounting` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Accounting/README.md) |
-| `Novolis.Economy.Finance` | `dotnet add package Novolis.Economy.Finance` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Finance/README.md) |
-| `Novolis.Economy.Logistics` | `dotnet add package Novolis.Economy.Logistics` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Logistics/README.md) |
-| `Novolis.Economy.Population` | `dotnet add package Novolis.Economy.Population` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Population/README.md) |
-| `Novolis.Economy.Agents` | `dotnet add package Novolis.Economy.Agents` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Agents/README.md) |
-| `Novolis.Economy.Simulation` | `dotnet add package Novolis.Economy.Simulation` | [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Simulation/README.md) |
+| Package | Install | Role · [README](.) |
+|---------|---------|-------------------|
+| `Novolis.Economy.Core` | `dotnet add package Novolis.Economy.Core` | **BM economic kernel** · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Core/README.md) |
+| `Novolis.Economy.Production` | `dotnet add package Novolis.Economy.Production` | Recipes, inventory, commands/events · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Production/README.md) |
+| `Novolis.Economy.Markets` | `dotnet add package Novolis.Economy.Markets` | Observed tape, pricing, intelligence stubs · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Markets/README.md) |
+| `Novolis.Economy.Accounting` | `dotnet add package Novolis.Economy.Accounting` | Ledgers, invoices, ownership engine · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Accounting/README.md) |
+| `Novolis.Economy.Finance` | `dotnet add package Novolis.Economy.Finance` | Inter-firm term loans · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Finance/README.md) |
+| `Novolis.Economy.Logistics` | `dotnet add package Novolis.Economy.Logistics` | Hub network, shipments, itineraries · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Logistics/README.md) |
+| `Novolis.Economy.Population` | `dotnet add package Novolis.Economy.Population` | Consumer cohorts, retail demand · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Population/README.md) |
+| `Novolis.Economy.Agents` | `dotnet add package Novolis.Economy.Agents` | Heuristic firm agents (not ML) · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Agents/README.md) |
+| `Novolis.Economy.Simulation` | `dotnet add package Novolis.Economy.Simulation` | Tick runner, phases, world bridge · [README](https://github.com/Novolis-Platform/novolis-economy/blob/main/src/Novolis.Economy.Simulation/README.md) |
 
 For NuGet.org and Visual Studio, the **embedded** README.md inside each package is authoritative.
 
