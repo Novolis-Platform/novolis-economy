@@ -54,7 +54,7 @@ public sealed record ProductBatch(
 /// <summary>Kind of operating unit in a facility.</summary>
 public enum OperatingUnitKind
 {
-  /// <summary>Purchasing desk.</summary>
+  /// <summary>Purchasing.</summary>
   Purchasing = 0,
   /// <summary>Storage.</summary>
   Storage = 1,

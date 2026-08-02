@@ -5,7 +5,7 @@ Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` 
 ## 2026.1.x — Exogenous export
 
 - `PlaceExportOrder` / `ExportFilled` — sell inventory into infinite exogenous demand (mirror of procurement)
-- NearSol: Sol Capital Raw export desk + comfortable-HH tramp ventures (hull loan entry)
+- NearSol: Sol Capital Raw export hub + comfortable-HH tramp ventures (hull loan entry)
 
 ## 2026.1.x — Core pivot (breaking)
 
