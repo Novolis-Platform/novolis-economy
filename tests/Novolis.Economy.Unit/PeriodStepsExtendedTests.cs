@@ -108,6 +108,73 @@ public sealed class PeriodStepsExtendedTests
 
         var next = new HouseholdConsumeMigrateStep().Execute(state);
         await Assert.That(next.Cohorts[cohort.Id].RegionId).IsEqualTo(RegionB);
+        await Assert.That(next.Scratch.HouseholdsMigrated).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task HouseholdConsumeMigrateStep_TaxPush_Moves_Without_Overflow()
+    {
+        var cohort = new HouseholdCohort(
+            CohortId.New(),
+            RegionA,
+            8,
+            new HouseholdProfile(0m, 0m, 1m, MigrationPreference: 0.8m),
+            HouseholdLaborKind.Common,
+            CoreMoney.Zero,
+            Household);
+        var state = EconomyState.Empty with
+        {
+            Entities = new Dictionary<LegalEntityId, CoreEntity>
+            {
+                [Household] = new CoreEntity(Household, CoreEntityKind.Household, CoreMoney.Zero),
+            },
+            Regions = new Dictionary<RegionId, Region>
+            {
+                [RegionA] = new Region(RegionA, LivingCapacity: 100, 10m, 10m),
+                [RegionB] = new Region(RegionB, LivingCapacity: 100, 10m, 10m),
+            },
+            Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
+            Policy = StatePolicy.Neutral with { HouseholdTaxRate = 0.35m },
+        };
+
+        var next = new HouseholdConsumeMigrateStep().Execute(state);
+        var inB = next.Cohorts.Values.Where(c => c.RegionId.Equals(RegionB)).Sum(c => c.HouseholdCount);
+        var inA = next.Cohorts.Values.Where(c => c.RegionId.Equals(RegionA)).Sum(c => c.HouseholdCount);
+        await Assert.That(inB).IsGreaterThan(0);
+        await Assert.That(inA).IsLessThan(8);
+        await Assert.That(next.Scratch.HouseholdsMigrated).IsGreaterThan(0);
+        await Assert.That(inA + inB).IsEqualTo(8);
+    }
+
+    [Test]
+    public async Task HouseholdConsumeMigrateStep_Low_Tax_Does_Not_Push_Without_Overflow()
+    {
+        var cohort = new HouseholdCohort(
+            CohortId.New(),
+            RegionA,
+            8,
+            new HouseholdProfile(0m, 0m, 1m, MigrationPreference: 0.8m),
+            HouseholdLaborKind.Common,
+            CoreMoney.Zero,
+            Household);
+        var state = EconomyState.Empty with
+        {
+            Entities = new Dictionary<LegalEntityId, CoreEntity>
+            {
+                [Household] = new CoreEntity(Household, CoreEntityKind.Household, CoreMoney.Zero),
+            },
+            Regions = new Dictionary<RegionId, Region>
+            {
+                [RegionA] = new Region(RegionA, LivingCapacity: 100, 10m, 10m),
+                [RegionB] = new Region(RegionB, LivingCapacity: 100, 10m, 10m),
+            },
+            Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
+            Policy = StatePolicy.Neutral with { HouseholdTaxRate = 0.15m },
+        };
+
+        var next = new HouseholdConsumeMigrateStep().Execute(state);
+        await Assert.That(next.Cohorts[cohort.Id].RegionId).IsEqualTo(RegionA);
+        await Assert.That(next.Scratch.HouseholdsMigrated).IsEqualTo(0);
     }
 
     [Test]

@@ -551,27 +551,67 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
             }
         }
 
-        // Migration: move entire small cohorts toward spare living capacity when preference > 0.5
+        // Migration: living overflow OR tax-sensitive mobility when MigrationPreference is high.
         var cohorts = new Dictionary<CohortId, HouseholdCohort>(state.Cohorts);
-        foreach (var cohort in state.Cohorts.Values)
+        var migrated = 0;
+        var taxRate = state.Policy.HouseholdTaxRate;
+        var taxPush = taxRate >= 0.28m;
+
+        foreach (var cohort in state.Cohorts.Values.ToList())
         {
             if (cohort.Profile.MigrationPreference < 0.5m || cohort.HouseholdCount <= 0)
                 continue;
             if (!state.Regions.TryGetValue(cohort.RegionId, out var home))
                 continue;
-            if (RegionCapacity.RemainingLiving(state, home) >= 0)
+            if (!cohorts.TryGetValue(cohort.Id, out var live) || live.HouseholdCount <= 0)
                 continue;
 
-            var target = state.Regions.Values
-                .Where(r => !r.Id.Equals(cohort.RegionId) && RegionCapacity.RemainingLiving(state, r) >= cohort.HouseholdCount)
-                .OrderByDescending(r => RegionCapacity.RemainingLiving(state, r))
-                .FirstOrDefault();
-            if (target is null)
+            // Recompute living using current cohort map
+            var tempState = state with { Cohorts = cohorts };
+            var overflow = RegionCapacity.RemainingLiving(tempState, home) < 0;
+            var taxMotivated = taxPush && cohort.Profile.MigrationPreference >= 0.65m;
+            if (!overflow && !taxMotivated)
                 continue;
-            cohorts[cohort.Id] = cohort with { RegionId = target.Id };
+
+            var candidates = state.Regions.Values
+                .Where(r => !r.Id.Equals(live.RegionId))
+                .Select(r => (Region: r, Slack: RegionCapacity.RemainingLiving(tempState, r)))
+                .Where(x => x.Slack > 0)
+                .OrderByDescending(x => x.Slack)
+                .ToList();
+            if (candidates.Count == 0)
+                continue;
+
+            var target = candidates[0].Region;
+            var slack = (int)candidates[0].Slack;
+            int move;
+            if (overflow)
+                move = Math.Min(live.HouseholdCount, slack);
+            else
+                move = Math.Min(Math.Max(1, live.HouseholdCount / 2), slack);
+
+            if (move <= 0)
+                continue;
+
+            if (move >= live.HouseholdCount)
+            {
+                cohorts[live.Id] = live with { RegionId = target.Id };
+                migrated += live.HouseholdCount;
+            }
+            else
+            {
+                cohorts[live.Id] = live with { HouseholdCount = live.HouseholdCount - move };
+                var splitId = CohortId.New();
+                cohorts[splitId] = live with { Id = splitId, RegionId = target.Id, HouseholdCount = move };
+                migrated += move;
+            }
         }
 
-        return state with { Cohorts = cohorts };
+        return state with
+        {
+            Cohorts = cohorts,
+            Scratch = state.Scratch with { HouseholdsMigrated = migrated },
+        };
     }
 }
 

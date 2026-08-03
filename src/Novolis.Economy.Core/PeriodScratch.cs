@@ -4,11 +4,13 @@ namespace Novolis.Economy.Core;
 public sealed record PeriodScratch(
     IReadOnlyDictionary<RegionId, decimal> LaborSupplyByRegion,
     IReadOnlyDictionary<ActivityId, decimal> LaborAllocated,
-    IReadOnlyDictionary<ActivityId, decimal> ActualRuns)
+    IReadOnlyDictionary<ActivityId, decimal> ActualRuns,
+    int HouseholdsMigrated = 0)
 {
     /// <summary>Empty scratch.</summary>
     public static PeriodScratch Empty { get; } = new(
         new Dictionary<RegionId, decimal>(),
         new Dictionary<ActivityId, decimal>(),
-        new Dictionary<ActivityId, decimal>());
+        new Dictionary<ActivityId, decimal>(),
+        HouseholdsMigrated: 0);
 }

@@ -1048,6 +1048,9 @@ A deterministic period may execute in this order:
 14. Distribute dividends or retain profit.
 
 15. Apply household consumption and migration.
+   - Living overflow: move/split cohorts toward regions with spare `LivingCapacity` when `MigrationPreference ≥ 0.5`.
+   - Tax push: when `HouseholdTaxRate ≥ 0.28` and `MigrationPreference ≥ 0.65`, households may leave even without overflow (partial cohort splits allowed).
+   - Scratch: `HouseholdsMigrated` counts households that changed region this period.
 
 16. Reconcile stocks, claims, and ownership.
 ```
