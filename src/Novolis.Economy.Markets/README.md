@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Markets
 
 **Imperfect market intelligence** — firms never see ground truth directly. Observed trade tape, estimate stubs, and pricing helpers for hub orders and retail.
@@ -64,3 +72,4 @@ Hub order quotes and tape-aware pricing are exercised by economy agents and dogf
 | `Novolis.Economy.Production` | `PostHubOrder`, `MarketTradeObserved` |
 | `Novolis.Economy.Agents` | Agents cancel/repost hub orders each tick |
 | `Novolis.Economy.Population` | Cohort demand clearing at posted retail prices |
+

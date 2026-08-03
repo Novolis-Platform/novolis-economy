@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Agents
 
 **Heuristic economic agents** — firms that observe `EconomyWorld`, apply deterministic policies, and enqueue `IEconomyCommand` values. Not LLMs or ML.
@@ -63,3 +71,4 @@ Used by [`novolis-dogfooding`](https://github.com/Novolis-Platform/novolis-dogfo
 | `Novolis.Economy.Production` | Recipes, inventory, hub orders, loan commands |
 | `Novolis.Economy.Markets` | Observed tape, pricing helpers |
 | `Novolis.Economy.Finance` | Loan settlement engine |
+

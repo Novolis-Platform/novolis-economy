@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Logistics
 
 Economic **transport**: hub/corridor/vehicle models, itinerary planning, and multi-leg shipments with fuel bunkering, dwell, berth capacity, crew labor, and tolls.
@@ -58,3 +66,4 @@ Multi-leg tramp freighter scenarios in [`novolis-dogfooding`](https://github.com
 | `Novolis.Economy.Simulation` | `AdvanceLogistics` phase, `CoreEconomyBridge` |
 | `Novolis.Economy.Agents` | `CarrierFirmAgent` plans reposition / delivery |
 | `Novolis.Economy.Accounting` | Transport fuel and toll ledger posts |
+

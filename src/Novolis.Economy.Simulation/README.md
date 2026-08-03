@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Simulation
 
 Deterministic economic **tick runner**: `EconomyWorld`, ordered phases, command queue, events, and world fingerprint hash.
@@ -67,3 +75,4 @@ Composition root for [`novolis-dogfooding`](https://github.com/Novolis-Platform/
 | `Novolis.Economy.Production` | Command / event types enqueued here |
 | `Novolis.Economy.Agents` | Tick agents before each hour |
 | `Novolis.Economy.Finance` | `SettleFinance` uses `LoanEngine` |
+

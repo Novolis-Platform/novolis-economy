@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Production
 
 Product **recipes**, quality-bearing **batches**, facility workflow layout stubs, and the shared **command / event** vocabulary for the ops economy stack.
@@ -58,3 +66,4 @@ Production plans, inventory, and hub trades drive [`novolis-dogfooding`](https:/
 | `Novolis.Economy.Simulation` | Applies commands in ordered phases |
 | `Novolis.Economy.Markets` | Hub book + pricing on top of production events |
 | `Novolis.Economy.Accounting` | Ledger posts triggered by production / sales events |
+

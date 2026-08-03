@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Finance
 
 Inter-firm **term loans**: originate, hourly interest accrual onto notes, repayment, and default at term when cash is insufficient.
@@ -46,3 +54,4 @@ Household lenders use `LoanEngine.TryOriginateHouseholdLender` (budget validated
 | `Novolis.Economy.Production` | `OriginateLoan`, `RepayLoan`, `LoanOriginated`, … events |
 | `Novolis.Economy.Agents` | `TreasuryFirmAgent`, `HouseholdFirmAgent` enqueue loan commands |
 | `Novolis.Economy.Simulation` | `SettleFinance` phase, `ICreditCirculationSource` impl |
+

@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Accounting
 
 Double-entry **ledgers**, **invoices**, period-close markers, and the **ownership engine** (dividends, claim assign/transfer helpers, capacity investment posts).
@@ -45,3 +53,4 @@ Loan and transport posts (`PostLoanDisbursement`, `PostInterestAccrual`, fuel/to
 | `Novolis.Economy.Production` | Sales / procurement events drive ledger entries |
 | `Novolis.Economy.Logistics` | Fuel bunkering and toll expense accounts |
 | `Novolis.Economy.Simulation` | Holds firm ledger collection on `EconomyWorld` |
+

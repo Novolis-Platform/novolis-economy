@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Population
 
 **Consumer cohort** stubs. Demand is modeled per cohort, not per individual citizen.
@@ -57,3 +65,4 @@ DemandEngine.ResolvePurchases(
 | `Novolis.Economy.Markets` | Retail prices and observed tape |
 | `Novolis.Economy.Agents` | `HouseholdFirmAgent` spends above comfort |
 | `Novolis.Economy.Production` | `GoodsSold` events from cohort purchases |
+

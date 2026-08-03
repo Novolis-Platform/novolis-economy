@@ -1,3 +1,11 @@
+<!-- novolis-pkg-brand:start -->
+<p align="center">
+  <a href="https://github.com/Novolis-Platform/novolis-economy">
+    <img src="https://raw.githubusercontent.com/Novolis-Platform/.github/main/brand/logo-icon.svg" width="72" alt="Novolis"/>
+  </a>
+</p>
+<!-- novolis-pkg-brand:end -->
+
 # Novolis.Economy.Core
 
 Bounded-minimum (BM) economic model: immutable `EconomyState`, ordered `IEconomyStep` fold, stock–flow discipline.
@@ -217,3 +225,13 @@ Tests: `tests/Novolis.Economy.Unit` (`EconomyCore*`).
 Validation scenarios (`EconomyCoreValidationScenariosTests`): Godley–Lavoie-style cash conservation without bank money; Graziani monetary circuit (create → wage → spend → repay/destroy); Minsky illiquid-but-solvent; posted-price quantity rationing; living/logistics capacity binds.
 
 Over-time behaviours (`EconomyCoreOverTimeTests`): multi-period cash conservation; carriage lag; delinquency→default aging; production accumulation; bank interest deposit drain; fiscal transfer exhaustion; Minsky stress across periods.
+
+## Install
+
+```bash
+dotnet add package Novolis.Economy.Core
+```
+
+**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/download) (`net10.0`).
+
+
