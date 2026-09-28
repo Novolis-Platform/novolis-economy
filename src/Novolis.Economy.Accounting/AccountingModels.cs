@@ -136,6 +136,12 @@ public sealed class FirmLedger
   /// <summary>Posted entries.</summary>
   public IReadOnlyList<LedgerEntry> Entries => _entries;
 
+  /// <summary>
+  /// Raised before a posting changes the cash balance. Simulation attaches
+  /// this hook to project the change into Core's monetary position.
+  /// </summary>
+  public event Action<Money>? CashChanging;
+
   /// <summary>Account id for a role.</summary>
   public AccountId Account(AccountRole role) => _roles[role];
 
@@ -163,6 +169,19 @@ public sealed class FirmLedger
 
     var debitAccount = _roles[debit];
     var creditAccount = _roles[credit];
+    var cashDelta =
+      (debit == AccountRole.Cash ? amount : Money.Zero) -
+      (credit == AccountRole.Cash ? amount : Money.Zero);
+    if (Cash.Amount + cashDelta.Amount < -0.0000001m)
+    {
+      throw new InvalidOperationException(
+        $"Cash balance for {FirmId} cannot become negative: " +
+        $"current {Cash}, delta {cashDelta}.");
+    }
+
+    if (cashDelta.Amount != 0m)
+      CashChanging?.Invoke(cashDelta);
+
     _balances[debitAccount] = _balances[debitAccount] + amount;
     _balances[creditAccount] = _balances[creditAccount] - amount;
     _entries.Add(new LedgerEntry(entryId, debitAccount, FirmId, LedgerSide.Debit, amount, date, memo));

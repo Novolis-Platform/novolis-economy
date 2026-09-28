@@ -32,6 +32,35 @@ public sealed class PrimitivesTests
     }
 
     [Test]
+    public async Task AssetAmount_RejectsNegativeQuantity()
+    {
+        var act = () => new AssetAmount(EconomicAssetId.New(), -1m);
+
+        await Assert.That(act).Throws<ArgumentOutOfRangeException>();
+    }
+
+    [Test]
+    public async Task PrimitiveVocabulary_UsesPrimitiveAssembly()
+    {
+        var types = new[]
+        {
+            typeof(EconomicEntityId),
+            typeof(EconomicAssetId),
+            typeof(RegionId),
+            typeof(ClaimId),
+            typeof(TransactionId),
+            typeof(AssetAmount),
+            typeof(Money),
+            typeof(EconomicPosition),
+        };
+
+        await Assert.That(types.Select(type => type.Assembly).Distinct()).HasSingleItem();
+        await Assert.That(types.All(
+                type => type.Namespace == "Novolis.Economy.Primitives"))
+            .IsTrue();
+    }
+
+    [Test]
     public async Task Primitives_HaveNoEconomyAssemblyReferences()
     {
         var references = typeof(EconomicPosition).Assembly

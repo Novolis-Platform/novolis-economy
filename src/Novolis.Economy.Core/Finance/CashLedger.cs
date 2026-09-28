@@ -35,8 +35,8 @@ public static class CashLedger
 
         state = EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [
                     new PositionChange(
                         owner,
@@ -133,8 +133,8 @@ public static class CashLedger
 
         return EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [
                     new PositionChange(
                         EconomicIdentity.For(from),

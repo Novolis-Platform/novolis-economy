@@ -32,12 +32,18 @@ public sealed class SimulationState
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
     _cachedWorldFingerprint = world.Fingerprint();
+    var specificationHash = SimulationRunManifest.HashSpecification(world.Specification);
     Manifest = new SimulationRunManifest(
       world.Specification.Version,
       seed,
       _cachedWorldFingerprint,
       world.Policy.PeriodHours,
-      typeof(SimulationState).Assembly.GetName().Version?.ToString() ?? "unknown");
+      typeof(SimulationState).Assembly.GetName().Version?.ToString() ?? "unknown",
+      specificationHash,
+      SimulationRunManifest.HashScenario(
+        seed,
+        _cachedWorldFingerprint,
+        specificationHash));
     RecomputeHash();
   }
 

@@ -64,7 +64,14 @@ public sealed class EconomyCoveragePushTests
                 [HouseholdEntity] = new CoreEntity(HouseholdEntity, CoreEntityKind.Household, CoreMoney.From(50m)),
             },
             Regions = new Dictionary<RegionId, Region> { [Region] = new Region(Region, 10, 10m, 10m) },
-            Resources = new Dictionary<ResourceId, Resource> { [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood) },
+            Resources = new Dictionary<ResourceId, Resource>
+            {
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value))
+            },
             Policy = StatePolicy.Neutral,
         };
 

@@ -11,7 +11,21 @@
 Bounded-minimum (BM) economic model: immutable `EconomyState`, ordered `IEconomyStep` fold, stock–flow discipline.
 PackageId: `Novolis.Economy.Core` (`2026.1.*` on GitHub Packages). Normative types and rules: [`SPEC.md`](SPEC.md).
 
-This package is the **economic kernel**. Ops packages (`Production`, `Logistics`, `Simulation`, …) depend on it. Hour ticks advance carriage only; Core’s 16-step pipeline settles at period boundaries via `EconomyWorld.CoreState` / `CoreEconomyBridge`.
+This package is the **economic kernel**. Ops packages (`Production`, `Logistics`, `Simulation`, …) depend on it. Simulation owns hourly orchestration; Core applies authoritative position, monetary, and claim transitions and settles its period pipeline at period boundaries. `CoreEconomyBridge` is a transitional integration adapter, not a second stock of record.
+
+The authority graph is intentionally narrow:
+
+```text
+Primitives → Core positions / claims / transactions
+                    ↑
+       Production · Markets · Finance · Simulation
+```
+
+`EconomyState.PositionState` and `EconomyState.ClaimState` are the stocks of
+record. `Holdings` and `Loans` remain named compatibility projections while
+older algorithms migrate; they must reconcile to those Core books. Deposits
+are intentionally still a separately named Core liability book in this
+release, not an operational package cash mirror.
 
 ---
 
@@ -43,7 +57,7 @@ ShareHolding ──units of──► ShareClass(Issuer)
 ResourceTransfer ──carriage──► (ownership preserved unless a sale)
 ```
 
-**Ops weave:** Core `RegionId` ≈ hub / `GeographicAreaId`; deliveries credit Core holdings via `CoreEconomyBridge`. PackageId `Novolis.Economy` (primitives) is retired.
+**Ops weave:** Core `RegionId` ≈ hub / `GeographicAreaId`; deliveries apply Core position transactions via the Simulation composition layer. PackageId `Novolis.Economy` is retired; shared vocabulary lives in `Novolis.Economy.Primitives`.
 
 ---
 
@@ -107,10 +121,13 @@ Hours bands: Common 12 / Mean 18 / Extreme 24 per household-day.
 
 ---
 
-## 7–8. Resources & holdings
+## 7–8. Resources & positions
 
 Catalog: `EconomyState.Resources` (Core extension for named kinds).  
-Holdings keyed `Owner×Region×Resource` via `HoldingLedger` — upsert; no silent owner change.
+Authoritative positions are keyed `Owner×Region×EconomicAsset` via
+`PositionLedger`. `HoldingLedger` and `EconomyState.Holdings` provide the
+resource-shaped compatibility view used by older production algorithms; their
+aggregate must equal the Core position.
 
 ---
 
@@ -131,7 +148,9 @@ Holdings keyed `Owner×Region×Resource` via `HoldingLedger` — upsert; no sile
 
 ## 11–13. Loans, credit, obligations
 
-- Loans: Performing / Delinquent / Defaulted / Repaid; interest → obligations; lender asset / borrower liability symmetry.
+- Claims: `ClaimLedger` owns outstanding principal and claim status. Finance
+  retains loan terms, accrual, repayment policy, and credit decisions; its
+  `Loan` object is a behavior adapter whose balance is hydrated from Core.
 - Credit facilities: `Available = Limit − Drawn`; only **committed** undrawn counts in liquidity; draw creates/augments a loan.
 - Obligations: kinds + statuses; settle Wage → Tax → Interest → Principal → … (`ObligationEngine`).
 
@@ -197,7 +216,12 @@ Contrast: Arrow–Debreu GE clears all markets simultaneously; BM is a **sequent
 
 ## Economic grammar (summary)
 
-Ownership, location, and claims are **stocks**. Production, trade, carriage, lending, tax, and settlement are **flows**. Banks create deposits when they lend; lenders reshuffle cash. Liquidity is due-now coverage; solvency is net claims. Capacity binds living, production space, and logistics. Households are unownable; firms issue unit shares.
+Ownership, location, and claims are **stocks**. Production, trade, carriage,
+lending, tax, and settlement are **flows**. Core `ShareHolding` is the
+ownership stock; Accounting ownership DTOs are input/report adapters. Banks
+create deposits when they lend; lenders reshuffle cash. Liquidity is due-now
+coverage; solvency is net claims. Capacity binds living, production space, and
+logistics. Households are unownable; firms issue unit shares.
 
 ### Citations
 

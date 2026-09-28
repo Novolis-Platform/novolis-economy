@@ -41,7 +41,7 @@ public sealed record Resource(
     ResourceId Id,
     string Name,
     ResourceKind Kind,
-    EconomicAssetId AssetId = default);
+    EconomicAssetId AssetId);
 
 /// <summary>Quantity of a resource.</summary>
 public sealed record ResourceAmount(ResourceId ResourceId, decimal Quantity);

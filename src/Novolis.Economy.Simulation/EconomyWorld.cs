@@ -267,6 +267,9 @@ public sealed class EconomyWorld
   /// <summary>Ops hub → Core region map (carriage destination).</summary>
   public Dictionary<TransportHubId, RegionId> HubRegions { get; } = new();
 
+  /// <summary>Operational inventory locations mapped to Core regions.</summary>
+  public Dictionary<InventoryLocationId, RegionId> InventoryLocationRegions { get; } = new();
+
   /// <summary>Default geographic area for market estimates.</summary>
   public GeographicAreaId DefaultArea { get; set; } = GeographicAreaId.From(Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"));
 
@@ -278,6 +281,7 @@ public sealed class EconomyWorld
     {
       ledger = new FirmLedger(firmId);
       Ledgers[firmId] = ledger;
+      CoreCashBridge.Attach(this, ledger);
     }
 
     Entities.TryAdd(firmId, new LegalEntity(firmId, LegalEntityKind.Firm));
@@ -302,6 +306,10 @@ public sealed class EconomyWorld
     EnsureFirm(firmId, name);
     var entity = new LegalEntity(firmId, LegalEntityKind.Household);
     Entities[firmId] = entity;
+    CoreMonetaryBridge.EnsureEntity(
+      this,
+      firmId,
+      Core.LegalEntityKind.Household);
     AvailableLaborHours[firmId] = 0m;
     return entity;
   }

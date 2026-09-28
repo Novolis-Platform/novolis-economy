@@ -8,6 +8,10 @@ public sealed class UnknownEconomicEntityException(LegalEntityId id)
 public sealed class UnknownEconomicAssetException(ResourceId id)
     : InvalidOperationException($"Unknown economic asset for resource {id}.");
 
+/// <summary>Raised when an economic asset identity is not registered.</summary>
+public sealed class UnknownEconomicAssetIdException(EconomicAssetId id)
+    : InvalidOperationException($"Unknown economic asset {id}.");
+
 /// <summary>Raised when a spatial region is missing in strict registration mode.</summary>
 public sealed class UnknownRegionException(RegionId id)
     : InvalidOperationException($"Unknown economic region {id}.");

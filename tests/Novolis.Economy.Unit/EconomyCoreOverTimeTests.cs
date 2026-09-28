@@ -285,7 +285,11 @@ file static class OverTimeFixtures
             Regions = new Dictionary<RegionId, Region> { [RegionA] = a, [RegionB] = b },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood)
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value))
             },
             Lanes = new Dictionary<string, TransportLane>
             {
@@ -352,8 +356,16 @@ file static class OverTimeFixtures
             Activities = new Dictionary<ActivityId, Activity> { [ActId] = activity },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood),
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood)
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value)),
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value))
             },
             Policy = StatePolicy.Neutral with { WagePerLaborHour = CoreMoney.From(0m) }
         };

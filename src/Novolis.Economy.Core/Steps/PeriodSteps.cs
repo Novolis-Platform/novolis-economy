@@ -24,9 +24,16 @@ public sealed class ApplyPolicyStep : IEconomyStep
         };
 
         var policy = state.Policy;
+        var fiscal = state.Specification.Fiscal;
+        var householdTaxRate = fiscal.HouseholdTaxRate > 0m
+            ? fiscal.HouseholdTaxRate
+            : policy.HouseholdTaxRate;
+        var firmTaxRate = fiscal.FirmTaxRate > 0m
+            ? fiscal.FirmTaxRate
+            : policy.FirmTaxRate;
         if (policy.TransferPerHousehold.Amount <= 0m &&
-            policy.HouseholdTaxRate <= 0m &&
-            policy.FirmTaxRate <= 0m)
+            householdTaxRate <= 0m &&
+            firmTaxRate <= 0m)
             return state;
 
         // Find a State entity to act as fiscal counterparty
@@ -267,8 +274,8 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                         state = CashLedger.EnsurePosition(state, holding.Owner);
                         state = EconomicTransactionEngine.Apply(
                             state,
-                            new EconomicTransaction(
-                                TransactionId.From(Guid.Empty),
+                            EconomicTransaction.Create(
+                                state,
                                 [
                                     new PositionChange(
                                         EconomicIdentity.For(holding.Owner),
@@ -408,16 +415,24 @@ public sealed class CreateObligationsStep : IEconomyStep
                 ObligationKind.InsurancePremium);
         }
 
-        // Taxes: household and firm rates on cash (simple fiscal)
+        // Taxes: household and firm rates on cash (simple fiscal). A positive
+        // model-specification rate overrides the legacy StatePolicy input.
         var treasury = state.Entities.Values.FirstOrDefault(e => e.Kind == LegalEntityKind.State);
         if (treasury is not null)
         {
+            var fiscal = state.Specification.Fiscal;
+            var householdTaxRate = fiscal.HouseholdTaxRate > 0m
+                ? fiscal.HouseholdTaxRate
+                : state.Policy.HouseholdTaxRate;
+            var firmTaxRate = fiscal.FirmTaxRate > 0m
+                ? fiscal.FirmTaxRate
+                : state.Policy.FirmTaxRate;
             foreach (var entity in state.Entities.Values)
             {
                 decimal rate = entity.Kind switch
                 {
-                    LegalEntityKind.Household => state.Policy.HouseholdTaxRate,
-                    LegalEntityKind.Firm => state.Policy.FirmTaxRate,
+                    LegalEntityKind.Household => householdTaxRate,
+                    LegalEntityKind.Firm => firmTaxRate,
                     _ => 0m
                 };
                 var entityCash = CashLedger.Balance(state, entity.Id);
@@ -515,8 +530,9 @@ public sealed class MarkDelinquencyStep : IEconomyStep
             var o = obligations[i];
             if (o.Status != ObligationStatus.Delinquent)
                 continue;
-            // Already delinquent for > 2 periods past due → defaulted
-            if (current.Period - o.DuePeriod >= 2)
+            // The declared credit specification controls delinquency duration.
+            if (current.Period - o.DuePeriod >=
+                current.Specification.Credit.DelinquencyPeriodsBeforeDefault)
                 obligations[i] = o with { Status = ObligationStatus.Defaulted };
         }
 
@@ -557,6 +573,15 @@ public sealed class MarkDelinquencyStep : IEconomyStep
         }
 
         var next = current with { Obligations = obligations, Loans = loans };
+        foreach (var loan in loans.Values)
+        {
+            var claim = ClaimLedger.Snapshot(next).GetValueOrDefault(
+                ClaimLedger.ClaimIdFor(loan.Id));
+            if (claim is null || claim.Status == loan.Status)
+                continue;
+            next = ClaimLedger.Upsert(next, claim with { Status = loan.Status });
+        }
+
         return ClaimLedger.SyncFromLegacyLoans(next);
     }
 }
@@ -629,7 +654,9 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
         // Migration: living overflow OR tax-sensitive mobility when MigrationPreference is high.
         var cohorts = new Dictionary<CohortId, HouseholdCohort>(state.Cohorts);
         var migrated = 0;
-        var taxRate = state.Policy.HouseholdTaxRate;
+        var taxRate = state.Specification.Fiscal.HouseholdTaxRate > 0m
+            ? state.Specification.Fiscal.HouseholdTaxRate
+            : state.Policy.HouseholdTaxRate;
         var taxPush = taxRate >= state.Specification.Migration.TaxPushThreshold;
 
         foreach (var cohort in state.Cohorts.Values.ToList())

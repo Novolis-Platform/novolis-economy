@@ -323,7 +323,11 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
             },
             Policy = StatePolicy.Neutral,
         };
@@ -354,7 +358,11 @@ public sealed class EconomyCoreCoverageBoostTests
             Regions = new Dictionary<RegionId, Region> { [RegionA] = new Region(RegionA, 10, 10m, 10m) },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood),
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value)),
             },
             Policy = StatePolicy.Neutral,
         };
@@ -497,7 +505,11 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
             },
         };
         var books = unpriced.ProjectedBooks(Firm);
@@ -521,8 +533,16 @@ public sealed class EconomyCoreCoverageBoostTests
             Regions = new Dictionary<RegionId, Region> { [RegionA] = new Region(RegionA, 10, 10m, 10m) },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
-                [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value)),
             },
             Policy = StatePolicy.Neutral,
         };
@@ -832,8 +852,16 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
-                [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value)),
             },
             PostedPrices = new Dictionary<string, PostedPrice>
             {
@@ -872,7 +900,11 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
             },
             Policy = StatePolicy.Neutral,
         };
@@ -910,8 +942,16 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Ore] = new Resource(Ore, "Ore", ResourceKind.IntermediateGood),
-                [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood),
+                [Ore] = new Resource(
+                    Ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(Ore.Value)),
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value)),
             },
             Policy = StatePolicy.Neutral with { HouseholdTaxRate = 0.4m },
         };

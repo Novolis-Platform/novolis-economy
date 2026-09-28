@@ -1,14 +1,23 @@
 {
   "packages": {
-    "Novolis.Economy": {
+    "Novolis.Economy.Primitives": {
       "paths": [
-        "src/Novolis.Economy/**",
+        "src/Novolis.Economy.Primitives/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Primitives/Novolis.Economy.Primitives.csproj"
+    },
+    "Novolis.Economy.Core": {
+      "paths": [
+        "src/Novolis.Economy.Core/**",
         "tests/Novolis.Economy.Unit/Core/**",
         "Directory.Build.props",
         "Directory.Packages.props",
         "global.json"
       ],
-      "project": "src/Novolis.Economy/Novolis.Economy.csproj"
+      "project": "src/Novolis.Economy.Core/Novolis.Economy.Core.csproj"
     },
     "Novolis.Economy.Production": {
       "paths": [
@@ -64,6 +73,24 @@
         "global.json"
       ],
       "project": "src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj"
+    },
+    "Novolis.Economy.Finance": {
+      "paths": [
+        "src/Novolis.Economy.Finance/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Finance/Novolis.Economy.Finance.csproj"
+    },
+    "Novolis.Economy.Agents": {
+      "paths": [
+        "src/Novolis.Economy.Agents/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Agents/Novolis.Economy.Agents.csproj"
     }
   }
 }

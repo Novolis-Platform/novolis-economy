@@ -10,12 +10,32 @@ namespace Novolis.Economy.Simulation;
 /// </summary>
 public static class CoreClaimBridge
 {
+    /// <summary>
+    /// Loads the Core claim balance into the Finance working contract before
+    /// Finance applies accrual or repayment behavior.
+    /// </summary>
+    public static void HydrateLoan(EconomyWorld world, Finance.Loan loan)
+    {
+        var claim = ClaimLedger.Snapshot(world.CoreState)
+            .GetValueOrDefault(ClaimId.From(loan.Id.Value));
+        if (claim is null)
+            return;
+
+        loan.PrincipalRemaining = Money.From(claim.Principal.Quantity);
+        loan.Status = claim.Status switch
+        {
+            Core.LoanStatus.Defaulted => Finance.LoanStatus.Defaulted,
+            Core.LoanStatus.Repaid => Finance.LoanStatus.Closed,
+            _ => Finance.LoanStatus.Active
+        };
+    }
+
     /// <summary>Write the current outstanding operational loan claim to Core.</summary>
     public static void SyncLoan(EconomyWorld world, Finance.Loan loan)
     {
         var entities = new Dictionary<LegalEntityId, Core.LegalEntity>(world.CoreState.Entities);
-        EnsureEntity(entities, loan.LenderFirmId);
-        EnsureEntity(entities, loan.BorrowerFirmId);
+        EnsureEntity(world, entities, loan.LenderFirmId);
+        EnsureEntity(world, entities, loan.BorrowerFirmId);
         world.CoreState = world.CoreState with { Entities = entities };
 
         var daysRemaining = Math.Max(
@@ -42,10 +62,25 @@ public static class CoreClaimBridge
     }
 
     private static void EnsureEntity(
+        EconomyWorld world,
         IDictionary<LegalEntityId, Core.LegalEntity> entities,
         FirmId firmId)
     {
         var id = firmId.AsCore();
-        entities.TryAdd(id, new Core.LegalEntity(id, Core.LegalEntityKind.Firm, Money.Zero));
+        if (entities.ContainsKey(id))
+            return;
+
+        if (world.Registration != RegistrationMode.Implicit)
+            throw new UnknownEconomicEntityException(id);
+
+        var kind = world.Entities.TryGetValue(firmId, out var entity)
+            ? entity.Kind switch
+            {
+                LegalEntityKind.Household => Core.LegalEntityKind.Household,
+                LegalEntityKind.Civic => Core.LegalEntityKind.State,
+                _ => Core.LegalEntityKind.Firm
+            }
+            : Core.LegalEntityKind.Firm;
+        entities[id] = new Core.LegalEntity(id, kind, Money.Zero);
     }
 }

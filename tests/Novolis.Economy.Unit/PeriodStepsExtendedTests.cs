@@ -70,7 +70,11 @@ public sealed class PeriodStepsExtendedTests
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Food] = new Resource(Food, "Food", ResourceKind.ConsumerGood),
+                [Food] = new Resource(
+                    Food,
+                    "Food",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Food.Value)),
             },
             Policy = StatePolicy.Neutral,
         };

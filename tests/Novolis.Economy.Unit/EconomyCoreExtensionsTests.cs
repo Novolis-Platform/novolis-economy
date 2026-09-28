@@ -105,7 +105,11 @@ public sealed class EconomyCoreExtensionsTests
         {
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [ore] = new Resource(ore, "Ore", ResourceKind.IntermediateGood)
+                [ore] = new Resource(
+                    ore,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(ore.Value))
             },
             Holdings = new Dictionary<string, ResourceHolding>
             {

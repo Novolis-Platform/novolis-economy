@@ -49,8 +49,8 @@ public static class CreditEngine
         state = state with { Loans = loans };
         state = EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [new CreateClaim(ClaimLedger.FromLoan(state, loans[loanId]))],
                 "loan-origination"));
 
@@ -96,8 +96,8 @@ public static class CreditEngine
         state = state with { Loans = loans };
         state = EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [new CreateClaim(ClaimLedger.FromLoan(state, loans[loanId]))],
                 "loan-origination"));
 
@@ -157,8 +157,8 @@ public static class CreditEngine
         state = state with { Loans = loans };
         return EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [
                     new SettleClaim(
                         ClaimLedger.ClaimIdFor(loanId),

@@ -7,8 +7,8 @@
     <!-- Document surface in README/SPEC; enum/member XML can land incrementally. -->
     <NoWarn>$(NoWarn);CS1591;CS1587</NoWarn>
     <Description>
-      Bounded-minimum economic model: immutable EconomyState, ordered IEconomyStep pipeline.
-      Self-contained stock–flow aggregate; not yet woven into Simulation / Logistics.
+      Bounded-minimum economic kernel: immutable EconomyState, authoritative positions and claims,
+      invariant-preserving transactions, valuation, and ordered period transitions.
     </Description>
   </PropertyGroup>
   <ItemGroup>

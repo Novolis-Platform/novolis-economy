@@ -98,7 +98,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
               world.Ledgers,
               originate,
               hour,
-              () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+              () => LoanId.From(CreateLoanGuid(world, context.State, originate)));
             if (loan is null)
             {
               world.CreditHouseholdBudget(originate.LenderFirmId, originate.Principal);
@@ -110,7 +110,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
               world.Ledgers,
               originate,
               hour,
-              () => LoanId.From(CreateLoanGuid(originate.LenderFirmId, world.Loans.Count)));
+              () => LoanId.From(CreateLoanGuid(world, context.State, originate)));
           }
 
           if (loan is not null)
@@ -129,6 +129,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
           var loan = world.Loans.FirstOrDefault(l => l.Id.Equals(repay.LoanId));
           if (loan is not null)
           {
+            CoreClaimBridge.HydrateLoan(world, loan);
             var householdLender = world.IsHousehold(loan.LenderFirmId);
             var paid = LoanEngine.TryRepay(
               loan,
@@ -194,7 +195,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
         case DeclareDividend div:
         {
           foreach (var (owner, amount) in OwnershipEngine.TryDeclareDividend(
-                     world.OwnershipClaims,
+                     CoreOwnershipBridge.ClaimsFor(world, div.IssuerFirmId).ToList(),
                      world.Ledgers,
                      div.IssuerFirmId,
                      div.Total,
@@ -349,7 +350,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
       return;
     }
 
-    var id = CreateHubOrderId(post.FirmId, world.HubOrders.Count);
+    var id = CreateHubOrderId(world, context.State, post);
     var order = new HubOrder(
       id,
       post.FirmId,
@@ -363,22 +364,51 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     // Posted/cancelled quotes are high-churn; omit from the event log (fills still emit).
   }
 
-  private static Guid CreateHubOrderId(FirmId firmId, int index)
+  private static Guid CreateHubOrderId(
+    EconomyWorld world,
+    SimulationState simulation,
+    PostHubOrder post)
   {
-    var bytes = firmId.Value.ToByteArray();
-    var idx = BitConverter.GetBytes(index);
-    Buffer.BlockCopy(idx, 0, bytes, 12, 4);
-    bytes[15] = 0x0B;
-    return new Guid(bytes);
+    for (var ordinal = 0; ; ordinal++)
+    {
+      var id = Novolis.Economy.Core.DeterministicIds.GuidFor(
+        "hub-order",
+        simulation.Seed,
+        simulation.Clock.HourIndex,
+        world.CoreState.TransitionSequence,
+        post.FirmId.Value,
+        post.LocationId.Value,
+        post.ProductId.Value,
+        post.Side,
+        post.Quantity.Value,
+        post.LimitPrice.Amount,
+        ordinal);
+      if (world.HubOrders.All(order => order.Id != id))
+        return id;
+    }
   }
 
-  private static Guid CreateLoanGuid(FirmId firmId, int index)
+  private static Guid CreateLoanGuid(
+    EconomyWorld world,
+    SimulationState simulation,
+    OriginateLoan request)
   {
-    var bytes = firmId.Value.ToByteArray();
-    var idx = BitConverter.GetBytes(index);
-    Buffer.BlockCopy(idx, 0, bytes, 12, 4);
-    bytes[15] = 0xF1;
-    return new Guid(bytes);
+    for (var ordinal = 0; ; ordinal++)
+    {
+      var id = Novolis.Economy.Core.DeterministicIds.GuidFor(
+        "simulation-loan",
+        simulation.Seed,
+        simulation.Clock.HourIndex,
+        world.CoreState.TransitionSequence,
+        request.LenderFirmId.Value,
+        request.BorrowerFirmId.Value,
+        request.Principal.Amount,
+        request.AnnualInterestRate,
+        request.TermHours,
+        ordinal);
+      if (world.Loans.All(loan => loan.Id.Value != id))
+        return id;
+    }
   }
 
   private static void TryTransferGoodsForCash(
@@ -412,7 +442,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     }
 
     var sellerKey = new InventoryKey(xfer.SellerFirmId, xfer.LocationId, xfer.ProductId);
-    if (!world.Inventory.TryTake(sellerKey, xfer.Quantity, out var taken, out var cogs))
+    if (!CoreInventoryBridge.TryTake(world, sellerKey, xfer.Quantity, out var taken, out var cogs))
     {
       Fail("stock");
       return;
@@ -421,7 +451,8 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     var buyerKey = new InventoryKey(xfer.BuyerFirmId, xfer.LocationId, xfer.ProductId);
     foreach (var lot in taken)
     {
-      world.Inventory.Add(
+      CoreInventoryBridge.Add(
+        world,
         buyerKey,
         lot with { UnitCost = xfer.UnitPrice });
     }
@@ -628,7 +659,8 @@ public sealed class AcquireInputsPhase : ISimulationPhase
       var quantity = Quantity.From(qty);
       var spend = Money.From(order.MaxUnitPrice.Amount * qty);
       // Stock first under hard caps; only pay for what fits.
-      var accepted = world.Inventory.Add(
+      var accepted = CoreInventoryBridge.Add(
+        world,
         new InventoryKey(order.BuyerFirmId, order.Destination, order.ProductId),
         new ProductBatch(
           order.ProductId,
@@ -668,7 +700,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
       }
 
       var quantity = Quantity.From(qty);
-      if (!world.Inventory.TryTake(key, quantity, out _, out var cogs))
+      if (!CoreInventoryBridge.TryTake(world, key, quantity, out _, out var cogs))
       {
         continue;
       }
@@ -690,8 +722,10 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         continue;
       }
 
+      var inventoryBefore = CoreInventoryBridge.Snapshot(world);
       var shipment = LogisticsEngine.TryDepart(
         world.Inventory, cmd.FirmId, route, cmd.ProductId, cmd.Quantity, hour, out _);
+      CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
       if (shipment is null)
       {
         continue;
@@ -732,6 +766,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         continue;
       }
 
+      var inventoryBefore = CoreInventoryBridge.Snapshot(world);
       var shipment = LogisticsEngine.TryDepartItinerary(
         world.Inventory,
         cmd.FirmId,
@@ -746,6 +781,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         out _,
         out var failReason,
         TransitProfiles.FromCode(cmd.TransitProfileCode));
+      CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
       if (shipment is null)
       {
         world.TransportStats.FailedPlans++;
@@ -792,6 +828,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         continue;
       }
 
+      var inventoryBefore = CoreInventoryBridge.Snapshot(world);
       var shipment = LogisticsEngine.TryDepartItinerary(
         world.Inventory,
         cmd.FirmId,
@@ -806,6 +843,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
         out _,
         out var failReason,
         TransitProfiles.FromCode(cmd.TransitProfileCode));
+      CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
       if (shipment is null)
       {
         world.TransportStats.FailedPlans++;
@@ -892,7 +930,12 @@ public sealed class MatchHubOrdersPhase : ISimulationPhase
         }
 
         var sellerKey = new InventoryKey(sell.FirmId, sell.LocationId, sell.ProductId);
-        if (!world.Inventory.TryTake(sellerKey, Quantity.From(fillQty), out var taken, out var cogs))
+        if (!CoreInventoryBridge.TryTake(
+              world,
+              sellerKey,
+              Quantity.From(fillQty),
+              out var taken,
+              out var cogs))
         {
           si++;
           continue;
@@ -901,7 +944,10 @@ public sealed class MatchHubOrdersPhase : ISimulationPhase
         var buyerKey = new InventoryKey(buy.FirmId, buy.LocationId, buy.ProductId);
         foreach (var lot in taken)
         {
-          world.Inventory.Add(buyerKey, lot with { UnitCost = unitPrice });
+          CoreInventoryBridge.Add(
+            world,
+            buyerKey,
+            lot with { UnitCost = unitPrice });
         }
 
         LedgerEngine.PostCashSale(sellerLedger, spend, cogs, hour.Date);
@@ -970,6 +1016,7 @@ public sealed class TransportInventoryPhase : ISimulationPhase
       return true;
     }
 
+    var inventoryBefore = CoreInventoryBridge.Snapshot(world);
     var result = LogisticsEngine.AdvanceHour(
       world.Shipments,
       world.Inventory,
@@ -979,6 +1026,7 @@ public sealed class TransportInventoryPhase : ISimulationPhase
       berthUsage,
       TryPayToll,
       world.TransportFuelUnitCost);
+    CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
 
     foreach (var (shipment, corridorId) in result.LegStarts)
     {
@@ -1037,8 +1085,6 @@ public sealed class TransportInventoryPhase : ISimulationPhase
       context.State.AppendEvent(new InventoryTransferred(
         hour, shipment.FirmId, shipment.ProductId, shipment.Quantity, "shipment-delivery"));
 
-      CoreEconomyBridge.ApplyDelivery(world, shipment);
-
       if (!shipment.IsLegacy)
       {
         world.TransportStats.CargoDelivered = Quantity.From(
@@ -1067,6 +1113,7 @@ public sealed class RunProductionPhase : ISimulationPhase
   {
     var world = context.State.World;
     var hour = context.State.Clock;
+    var inventoryBefore = CoreInventoryBridge.Snapshot(world);
 
     if (world.Policy.EnableSpoilage)
     {
@@ -1115,6 +1162,7 @@ public sealed class RunProductionPhase : ISimulationPhase
         hour, plan.Key.Firm, plan.Key.Facility, plan.Key.Product, produced, unitCost));
     }
 
+    CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
     return ValueTask.CompletedTask;
   }
 }
@@ -1157,8 +1205,10 @@ public sealed class RestockRetailPhase : ISimulationPhase
 
         // Ship up to route capacity
         var qty = Quantity.From(Math.Min(available.Value, route.Capacity.Value));
+        var inventoryBefore = CoreInventoryBridge.Snapshot(world);
         var shipment = LogisticsEngine.TryDepart(
           world.Inventory, facility.FirmId, route, productId, qty, hour, out _);
+        CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
         if (shipment is null)
         {
           continue;
@@ -1184,6 +1234,7 @@ public sealed class ResolveConsumerPurchasesPhase : ISimulationPhase
   public ValueTask ExecuteAsync(SimulationContext context, CancellationToken cancellationToken)
   {
     var world = context.State.World;
+    var inventoryBefore = CoreInventoryBridge.Snapshot(world);
     DemandEngine.ResolvePurchases(
       world.Cohorts,
       world.RetailPrices,
@@ -1202,6 +1253,7 @@ public sealed class ResolveConsumerPurchasesPhase : ISimulationPhase
       },
       world.Policy.PriceElasticity);
 
+    CoreInventoryBridge.ReconcileChanges(world, inventoryBefore);
     return ValueTask.CompletedTask;
   }
 }
@@ -1396,11 +1448,13 @@ public sealed class SettleFinancePhase : ISimulationPhase
 
     foreach (var loan in world.Loans.Where(l => l.Status == LoanStatus.Active).OrderBy(l => l.Id.Value))
     {
+      CoreClaimBridge.HydrateLoan(world, loan);
       var interest = LoanEngine.AccrueHour(loan, world.Ledgers, hour);
       if (interest.Amount > 0m)
       {
         context.State.AppendEvent(new InterestAccrued(hour, loan.Id, interest));
       }
+      CoreClaimBridge.SyncLoan(world, loan);
 
       if (hour.HourIndex < loan.DueAt.HourIndex)
       {

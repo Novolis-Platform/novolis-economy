@@ -119,8 +119,8 @@ public static class PositionLedger
     {
         var next = EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [
                     new PositionChange(
                         EconomicIdentity.For(owner),

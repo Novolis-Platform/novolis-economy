@@ -202,4 +202,34 @@ public sealed class EconomicGrammarTests
         await Assert.That(firstMarkets.NextInt(10_000)).IsEqualTo(secondMarkets.NextInt(10_000));
         await Assert.That(firstFirms.NextInt(10_000)).IsNotEqualTo(firstMarkets.NextInt(10_000));
     }
+
+    [Test]
+    public async Task RuntimeTransactions_allocate_ids_and_advance_sequence()
+    {
+        var state = StateWithCatalog();
+        var first = EconomicTransaction.Create(
+            state,
+            [new PositionChange(EconomicIdentity.For(Firm), IronAsset, 2m, Region)],
+            "deterministic-seed");
+        var second = EconomicTransaction.Create(
+            state,
+            [new PositionChange(EconomicIdentity.For(Firm), IronAsset, 2m, Region)],
+            "deterministic-seed");
+        var next = EconomicTransactionEngine.Apply(state, first);
+
+        await Assert.That(next.TransitionSequence).IsEqualTo(1);
+        await Assert.That(first.Id).IsNotEqualTo(default(TransactionId));
+        await Assert.That(first.Id).IsEqualTo(second.Id);
+    }
+
+    [Test]
+    public async Task Simulation_manifest_records_specification_and_scenario_identity()
+    {
+        var simulation = new SimulationState(42, new EconomyWorld());
+
+        await Assert.That(simulation.Manifest.SpecificationHash).IsNotEmpty();
+        await Assert.That(simulation.Manifest.ScenarioHash).IsNotEmpty();
+        await Assert.That(simulation.Manifest.SpecificationHash)
+            .IsEqualTo(SimulationRunManifest.HashSpecification(simulation.World.Specification));
+    }
 }

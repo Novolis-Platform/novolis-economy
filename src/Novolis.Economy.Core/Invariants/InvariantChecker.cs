@@ -69,6 +69,23 @@ public static class InvariantChecker
                 list.Add(new("POSITION_REGION", $"Position region {region} missing."));
         }
 
+        var resourcePositions = PositionLedger.ResourceView(state)
+            .GroupBy(holding => HoldingLedger.Key(
+                holding.Owner,
+                holding.RegionId,
+                holding.ResourceId))
+            .ToDictionary(group => group.Key, group => group.Sum(holding => holding.Quantity));
+        foreach (var (key, holding) in state.Holdings)
+        {
+            var positionQuantity = resourcePositions.GetValueOrDefault(key);
+            if (Math.Abs(positionQuantity - holding.Quantity) > 1e-9m)
+            {
+                list.Add(new(
+                    "POSITION_MIRROR",
+                    $"Resource position {key} quantity {positionQuantity} ≠ compatibility holding {holding.Quantity}."));
+            }
+        }
+
         foreach (var t in state.Transfers)
         {
             if (t.Quantity < -1e-9m)
@@ -128,6 +145,19 @@ public static class InvariantChecker
                 list.Add(new("LOAN_NEG", $"Loan {loan.Id} negative principal."));
             if (!state.Entities.ContainsKey(loan.Lender) || !state.Entities.ContainsKey(loan.Borrower))
                 list.Add(new("LOAN_PARTY", $"Loan {loan.Id} missing party."));
+
+            var claimId = ClaimLedger.ClaimIdFor(loan.Id);
+            if (state.ClaimState.TryGetValue(claimId, out var claim))
+            {
+                if (Math.Abs(claim.Principal.Quantity - loan.PrincipalOutstanding.Amount) > 1e-9m ||
+                    !EconomicIdentity.ToLegalEntityId(claim.Creditor).Equals(loan.Lender) ||
+                    !EconomicIdentity.ToLegalEntityId(claim.Debtor).Equals(loan.Borrower))
+                {
+                    list.Add(new(
+                        "CLAIM_MIRROR",
+                        $"Claim {claimId} does not match the legacy loan projection."));
+                }
+            }
         }
 
         foreach (var f in state.CreditFacilities.Values)

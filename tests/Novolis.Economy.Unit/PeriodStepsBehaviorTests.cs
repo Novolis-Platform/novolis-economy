@@ -68,7 +68,11 @@ public sealed class PeriodStepsBehaviorTests
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [Widget] = new Resource(Widget, "Widget", ResourceKind.ConsumerGood),
+                [Widget] = new Resource(
+                    Widget,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(Widget.Value)),
             },
             PostedPrices = new Dictionary<string, PostedPrice>
             {

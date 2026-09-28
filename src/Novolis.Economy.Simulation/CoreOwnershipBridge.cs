@@ -15,16 +15,11 @@ public static class CoreOwnershipBridge
   {
     var issuerId = issuer.AsCore();
     var coreEntities = new Dictionary<LegalEntityId, Core.LegalEntity>(world.CoreState.Entities);
-    coreEntities.TryAdd(
-      issuerId,
-      new Core.LegalEntity(issuerId, Core.LegalEntityKind.Firm, Money.Zero));
+    EnsureEntity(world, coreEntities, issuer);
 
     foreach (var claim in world.OwnershipClaims.Where(c => c.IssuerFirmId.Equals(issuer)))
     {
-      var ownerId = claim.OwnerFirmId.AsCore();
-      coreEntities.TryAdd(
-        ownerId,
-        new Core.LegalEntity(ownerId, Core.LegalEntityKind.Firm, Money.Zero));
+      EnsureEntity(world, coreEntities, claim.OwnerFirmId);
     }
 
     var claims = world.OwnershipClaims
@@ -54,5 +49,54 @@ public static class CoreOwnershipBridge
       ShareClasses = classes,
       ShareHoldings = holdings
     };
+  }
+
+  /// <summary>
+  /// Reads the Core share book as the ownership input for operational
+  /// behaviors that still accept Accounting compatibility DTOs.
+  /// </summary>
+  public static IReadOnlyList<OwnershipClaim> ClaimsFor(
+    EconomyWorld world,
+    FirmId issuer)
+  {
+    var issuerId = issuer.AsCore();
+    var shareClass = world.CoreState.ShareClasses.Values.FirstOrDefault(
+      share => share.Issuer.Equals(issuerId) &&
+               string.Equals(share.Name, "common", StringComparison.Ordinal));
+    if (shareClass is null || shareClass.IssuedUnits <= 0m)
+      return Array.Empty<OwnershipClaim>();
+
+    return world.CoreState.ShareHoldings
+      .Where(holding => holding.Issuer.Equals(issuerId) &&
+                       string.Equals(holding.ShareClass, "common", StringComparison.Ordinal) &&
+                       holding.Units > 0m)
+      .Select(holding => new OwnershipClaim(
+        issuer,
+        FirmId.From(holding.Owner.Value),
+        holding.Units / shareClass.IssuedUnits))
+      .ToList();
+  }
+
+  private static void EnsureEntity(
+    EconomyWorld world,
+    IDictionary<LegalEntityId, Core.LegalEntity> entities,
+    FirmId firmId)
+  {
+    var id = firmId.AsCore();
+    if (entities.ContainsKey(id))
+      return;
+
+    if (world.Registration != RegistrationMode.Implicit)
+      throw new UnknownEconomicEntityException(id);
+
+    var kind = world.Entities.TryGetValue(firmId, out var entity)
+      ? entity.Kind switch
+      {
+        LegalEntityKind.Household => Core.LegalEntityKind.Household,
+        LegalEntityKind.Civic => Core.LegalEntityKind.State,
+        _ => Core.LegalEntityKind.Firm
+      }
+      : Core.LegalEntityKind.Firm;
+    entities[id] = new Core.LegalEntity(id, kind, Money.Zero);
   }
 }

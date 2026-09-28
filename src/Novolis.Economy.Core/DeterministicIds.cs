@@ -23,7 +23,7 @@ public static class DeterministicIds
         LegalEntityId lender,
         LegalEntityId borrower)
     {
-        var sequence = state.Loans.Count;
+        var sequence = 0;
         var id = LoanId.From(GuidFor(
             "loan",
             state.SimulationSeed,
@@ -57,7 +57,7 @@ public static class DeterministicIds
         int duePeriod,
         ObligationKind kind)
     {
-        var sequence = state.Obligations.Count;
+        var sequence = 0;
         var id = ObligationId.From(GuidFor(
             "obligation",
             state.SimulationSeed,
@@ -95,7 +95,7 @@ public static class DeterministicIds
         RegionId destination,
         int movedHouseholds)
     {
-        var sequence = state.Cohorts.Count;
+        var sequence = 0;
         var id = CohortId.From(GuidFor(
             "cohort-split",
             state.SimulationSeed,

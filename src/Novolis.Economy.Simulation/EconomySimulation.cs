@@ -36,6 +36,8 @@ public sealed class EconomySimulation : IEconomySimulation
     _pipeline = pipeline;
     _random = new DeterministicRandom(seed);
     _context = new SimulationContext(State, _random, State.Entropy);
+    world.CoreState = world.CoreState with { SimulationSeed = seed };
+    CoreInventoryBridge.ReconcileAll(world);
   }
 
   /// <inheritdoc />
@@ -76,6 +78,8 @@ public sealed class EconomySimulation : IEconomySimulation
     for (var i = 0L; i < duration.Hours; i++)
     {
       cancellationToken.ThrowIfCancellationRequested();
+      CoreCashBridge.ReconcileAll(State.World);
+      CoreInventoryBridge.ReconcileAll(State.World);
       State.BeginTick();
       var phases = await _pipeline.ExecuteAsync(_context, cancellationToken).ConfigureAwait(false);
       State.CompleteTick(phases, _random.State);

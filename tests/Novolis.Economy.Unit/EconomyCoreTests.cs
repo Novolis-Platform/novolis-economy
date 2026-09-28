@@ -188,8 +188,16 @@ file static class CoreScenario
             Activities = new Dictionary<ActivityId, Activity> { [ActId] = activity },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood),
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood)
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value)),
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value))
             }
         };
         state = HoldingLedger.Credit(state, FirmId, RegionA, OreId, 4m);
@@ -208,7 +216,11 @@ file static class CoreScenario
             Regions = new Dictionary<RegionId, Region> { [RegionA] = a, [RegionB] = b },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood)
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value))
             },
             Lanes = new Dictionary<string, TransportLane>
             {

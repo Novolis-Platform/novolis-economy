@@ -21,10 +21,6 @@ public sealed class EconomyEngine(IReadOnlyList<IEconomyStep> Steps)
     public EconomyState Advance(EconomyState state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        var seeded = state with
-        {
-            TransitionSequence = checked(state.TransitionSequence + 1)
-        };
-        return Steps.Aggregate(seeded, static (current, step) => step.Execute(current));
+        return Steps.Aggregate(state, static (current, step) => step.Execute(current));
     }
 }

@@ -49,8 +49,7 @@ public sealed class EconomyWorldBuilder
     CoreMonetaryBridge.EnsureEntity(
       _world,
       firmId,
-      Core.LegalEntityKind.Firm,
-      openingCash);
+      Core.LegalEntityKind.Firm);
     if (openingCash.Amount > 0m)
     {
       ledger.SeedCash(openingCash, SimulationDate.Epoch);
@@ -71,8 +70,7 @@ public sealed class EconomyWorldBuilder
     CoreMonetaryBridge.EnsureEntity(
       _world,
       firmId,
-      Core.LegalEntityKind.State,
-      openingCash);
+      Core.LegalEntityKind.State);
     if (openingCash.Amount > 0m)
     {
       ledger.SeedCash(openingCash, SimulationDate.Epoch);
@@ -129,6 +127,13 @@ public sealed class EconomyWorldBuilder
 
     _world.Facilities[facility.Id] = facility;
     _world.EnsureFirm(facility.FirmId, _world.Firms.GetValueOrDefault(facility.FirmId, facility.FirmId.ToString()));
+    if (facility.Area is { } mappedArea)
+    {
+      var mappedRegion = mappedArea.AsCore();
+      _world.InventoryLocationRegions[facility.StorageLocation] = mappedRegion;
+      if (facility.RetailLocation is { } retailLocation)
+        _world.InventoryLocationRegions[retailLocation] = mappedRegion;
+    }
     return this;
   }
 
@@ -138,7 +143,11 @@ public sealed class EconomyWorldBuilder
     InventoryLocationId location,
     ProductBatch batch)
   {
-    _world.Inventory.Add(new InventoryKey(firmId, location, batch.ProductId), batch, bypassLimits: true);
+    CoreInventoryBridge.Add(
+      _world,
+      new InventoryKey(firmId, location, batch.ProductId),
+      batch,
+      bypassLimits: true);
     if (_world.Ledgers.TryGetValue(firmId, out var ledger))
     {
       ledger.SeedInventory(Money.From(batch.UnitCost.Amount * batch.Quantity.Value), batch.ProducedAt);

@@ -10,7 +10,11 @@
 
 Deterministic economic **tick runner**: `EconomyWorld`, ordered phases, command queue, events, and world fingerprint hash.
 
-Holds ops `LegalEntity` collections; `OwnershipClaim` lives in **Accounting**. Economic authority is **`Novolis.Economy.Core`** (`EconomyWorld.CoreState`); period close calls `EconomyEngine.Advance`.
+Holds operational collections for orchestration; `OwnershipClaim` and
+`FirmLedger` remain Accounting compatibility/input projections. Economic
+authority is **`Novolis.Economy.Core`** (`EconomyWorld.CoreState`), including
+positions, cash positions, claims, and Core share holdings; period close calls
+`EconomyEngine.Advance`.
 
 `EconomicRegion` + `AddRegion` / household `AddCohort` living clamp; region labor pools; production slots for mfg/assembly only.
 
@@ -60,7 +64,8 @@ Custom phase order (tests): `new EconomySimulation(seed, world, PhasePipeline.Cr
 | `PhasePipeline` / `DefaultPhases` | Ordered hourly + period-close phases |
 | `ISimulationPhase` | Single phase hook |
 | `SimulationPhaseOrder` | Phase enum ordering |
-| `CoreEconomyBridge` | Translate delivery events into Core position transactions |
+| `CoreEconomyBridge` | Bind hub regions and advance the Core period pipeline |
+| `CoreInventoryBridge` / `CoreCashBridge` | Reconcile operational detail into Core authority |
 | `DefaultConsequenceEngine` | Post-command side effects |
 | `LegalEntity` / `LegalEntityKind` | Ops party records |
 | `CohortBudgetResetMode` | When cohort budgets refresh |

@@ -273,7 +273,11 @@ file static class ValidationScenarios
             Regions = new Dictionary<RegionId, Region> { [RegionA] = region },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood)
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value))
             }
         };
         return HoldingLedger.Credit(state, FirmId, RegionA, WidgetId, 10m);
@@ -329,7 +333,11 @@ file static class ValidationScenarios
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood)
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value))
             },
             PostedPrices = new Dictionary<string, PostedPrice>
             {
@@ -368,7 +376,11 @@ file static class ValidationScenarios
             Regions = new Dictionary<RegionId, Region> { [RegionA] = a, [RegionB] = b },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood)
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value))
             },
             Lanes = new Dictionary<string, TransportLane>
             {

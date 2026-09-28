@@ -421,8 +421,16 @@ file static class FiscalNation
             Activities = new Dictionary<ActivityId, Activity> { [ActId] = activity },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood),
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood),
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value)),
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value)),
             },
             Policy = new StatePolicy(0m, 0m, CoreMoney.Zero, 0m, 0m, CoreMoney.From(wage)),
         };
@@ -466,7 +474,11 @@ file static class FiscalNation
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [WidgetId] = new Resource(WidgetId, "Widget", ResourceKind.ConsumerGood),
+                [WidgetId] = new Resource(
+                    WidgetId,
+                    "Widget",
+                    ResourceKind.ConsumerGood,
+                    EconomicAssetId.From(WidgetId.Value)),
             },
             PostedPrices = new Dictionary<string, PostedPrice>
             {
@@ -490,7 +502,11 @@ file static class FiscalNation
             Regions = new Dictionary<RegionId, Region> { [RegionA] = a, [RegionB] = b },
             Resources = new Dictionary<ResourceId, Resource>
             {
-                [OreId] = new Resource(OreId, "Ore", ResourceKind.IntermediateGood),
+                [OreId] = new Resource(
+                    OreId,
+                    "Ore",
+                    ResourceKind.IntermediateGood,
+                    EconomicAssetId.From(OreId.Value))
             },
             Lanes = new Dictionary<string, TransportLane>
             {

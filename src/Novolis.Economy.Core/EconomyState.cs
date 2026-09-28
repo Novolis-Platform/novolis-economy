@@ -64,7 +64,10 @@ public sealed record EconomyState(
     public EconomyModelSpecification Specification =>
         ModelSpecification ?? EconomyModelSpecification.Default;
 
-    /// <summary>Authoritative financial claims, materialized from legacy loans when needed.</summary>
+    /// <summary>
+    /// Authoritative financial claims. The legacy <see cref="Loans"/> dictionary
+    /// is a compatibility projection maintained by <see cref="Finance.ClaimLedger"/>.
+    /// </summary>
     public IReadOnlyDictionary<ClaimId, FinancialClaim> ClaimState =>
         Claims ?? new Dictionary<ClaimId, FinancialClaim>();
 
@@ -94,15 +97,38 @@ public sealed record EconomyState(
     /// <summary>Resolve a resource's economic asset identity.</summary>
     public EconomicAssetId AssetFor(ResourceId resourceId)
     {
-        if (Resources.TryGetValue(resourceId, out var resource) &&
-            resource.AssetId != default)
+        if (!Resources.TryGetValue(resourceId, out var resource) ||
+            resource.AssetId == default)
         {
-            return resource.AssetId;
+            throw new UnknownEconomicAssetException(resourceId);
         }
 
-        // Compatibility for pre-Primitives resource definitions. New scenario
-        // definitions must provide Resource.AssetId explicitly.
-        return EconomicAssetId.From(resourceId.Value);
+        return resource.AssetId;
+    }
+
+    /// <summary>Returns whether an asset is registered in this economy.</summary>
+    public bool HasAsset(EconomicAssetId assetId) =>
+        assetId == MonetaryAssetId ||
+        Resources.Values.Any(resource => resource.AssetId == assetId);
+
+    /// <summary>
+    /// Validates the registrations required by a position change before it
+    /// reaches the position ledger.
+    /// </summary>
+    public void ValidatePositionChange(
+        EconomicEntityId owner,
+        EconomicAssetId asset,
+        RegionId? region)
+    {
+        var ownerId = EconomicIdentity.ToLegalEntityId(owner);
+        if (!Entities.ContainsKey(ownerId))
+            throw new UnknownEconomicEntityException(ownerId);
+
+        if (!HasAsset(asset))
+            throw new UnknownEconomicAssetIdException(asset);
+
+        if (region is { } regionId && !Regions.ContainsKey(regionId))
+            throw new UnknownRegionException(regionId);
     }
 
     /// <summary>Price key Region|Resource.</summary>

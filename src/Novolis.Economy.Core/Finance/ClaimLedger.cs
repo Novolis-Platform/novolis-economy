@@ -99,11 +99,18 @@ public static class ClaimLedger
             loan.RemainingPeriods,
             loan.Status);
 
-    /// <summary>Synchronize legacy Core loan projections into the claim book.</summary>
+    /// <summary>
+    /// Import legacy loans that have no claim yet. Existing claims are never
+    /// overwritten: the claim book is authoritative.
+    /// </summary>
     public static EconomyState SyncFromLegacyLoans(EconomyState state)
     {
         foreach (var loan in state.Loans.Values)
+        {
+            if (state.ClaimState.ContainsKey(ClaimIdFor(loan.Id)))
+                continue;
             state = Upsert(state, FromLoan(state, loan));
+        }
         return state;
     }
 }

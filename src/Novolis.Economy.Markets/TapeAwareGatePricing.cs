@@ -24,6 +24,17 @@ public static class TapeAwareGatePricing
       floor,
       EconomyModelSpecification.Default.Pricing with { CeilingMultiple = ceilingMultiple });
 
+  /// <summary>Gate pricing using the complete declared model specification.</summary>
+  public static decimal Gate(
+    ObservedMarketBook book,
+    ProductId product,
+    decimal floor,
+    EconomyModelSpecification specification)
+  {
+    ArgumentNullException.ThrowIfNull(specification);
+    return Gate(book, product, floor, specification.Pricing);
+  }
+
   /// <summary>Gate pricing using declared model parameters.</summary>
   public static decimal Gate(
     ObservedMarketBook book,

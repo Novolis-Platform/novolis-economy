@@ -98,8 +98,8 @@ public static class HoldingLedger
 
         var next = EconomicTransactionEngine.Apply(
             state,
-            new EconomicTransaction(
-                TransactionId.From(Guid.Empty),
+            EconomicTransaction.Create(
+                state,
                 [
                     new PositionChange(fromOwner, asset, -quantity, region),
                     new PositionChange(toOwner, asset, quantity, region)
