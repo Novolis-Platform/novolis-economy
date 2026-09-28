@@ -1,4 +1,5 @@
 using Novolis.Economy;
+using Novolis.Economy.Core;
 
 namespace Novolis.Economy.Markets;
 
@@ -17,8 +18,21 @@ public static class TapeAwareGatePricing
     ProductId product,
     decimal floor,
     decimal ceilingMultiple = 2.4m)
+    => Gate(
+      book,
+      product,
+      floor,
+      EconomyModelSpecification.Default.Pricing with { CeilingMultiple = ceilingMultiple });
+
+  /// <summary>Gate pricing using declared model parameters.</summary>
+  public static decimal Gate(
+    ObservedMarketBook book,
+    ProductId product,
+    decimal floor,
+    PricingSpecification pricing)
   {
-    var ceiling = floor * ceilingMultiple;
+    ArgumentNullException.ThrowIfNull(pricing);
+    var ceiling = floor * pricing.CeilingMultiple;
     if (!book.TryGetTape(product, out var tape) || tape.TradeCount < 1)
     {
       return floor;
@@ -26,16 +40,16 @@ public static class TapeAwareGatePricing
 
     var observed = tape.LastPrice.Amount;
     // Slight undercut of last trade for lift bids; clamp to floor/ceiling band.
-    var blended = observed * 0.97m;
+    var blended = observed * pricing.UndercutFactor;
     if (book.Trend(product) == MarketTrend.Rising)
     {
-      blended = observed * 1.02m;
+      blended = observed * pricing.RisingFactor;
     }
     else if (book.Trend(product) == MarketTrend.Falling)
     {
-      blended = observed * 0.94m;
+      blended = observed * pricing.FallingFactor;
     }
 
-    return Math.Clamp(blended, floor * 0.85m, ceiling);
+    return Math.Clamp(blended, floor * pricing.LowerBandFactor, ceiling);
   }
 }

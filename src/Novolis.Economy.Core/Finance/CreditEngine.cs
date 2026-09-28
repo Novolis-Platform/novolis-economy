@@ -1,3 +1,5 @@
+using Novolis.Economy.Core.Transactions;
+
 namespace Novolis.Economy.Core.Finance;
 
 /// <summary>Loan / credit / deposit / obligation operations (SPEC §11–§15).</summary>
@@ -29,7 +31,10 @@ public static class CreditEngine
         state = state with { CreditFacilities = facilities };
 
         var provider = state.Entities[facility.Provider];
-        var loanId = LoanId.New();
+        var loanId = DeterministicIds.LoanIdFor(
+            state,
+            facility.Provider,
+            facility.Borrower);
         var loans = new Dictionary<LoanId, Loan>(state.Loans)
         {
             [loanId] = new Loan(
@@ -42,6 +47,12 @@ public static class CreditEngine
                 LoanStatus.Performing)
         };
         state = state with { Loans = loans };
+        state = EconomicTransactionEngine.Apply(
+            state,
+            new EconomicTransaction(
+                TransactionId.From(Guid.Empty),
+                [new CreateClaim(ClaimLedger.FromLoan(state, loans[loanId]))],
+                "loan-origination"));
 
         if (provider.Kind == LegalEntityKind.Bank)
         {
@@ -70,7 +81,7 @@ public static class CreditEngine
         if (principal.Amount <= 0m)
             return state;
         var lender = state.Entities[lenderId];
-        var loanId = LoanId.New();
+        var loanId = DeterministicIds.LoanIdFor(state, lenderId, borrowerId);
         var loans = new Dictionary<LoanId, Loan>(state.Loans)
         {
             [loanId] = new Loan(
@@ -83,6 +94,12 @@ public static class CreditEngine
                 LoanStatus.Performing)
         };
         state = state with { Loans = loans };
+        state = EconomicTransactionEngine.Apply(
+            state,
+            new EconomicTransaction(
+                TransactionId.From(Guid.Empty),
+                [new CreateClaim(ClaimLedger.FromLoan(state, loans[loanId]))],
+                "loan-origination"));
 
         if (lender.Kind == LegalEntityKind.Bank)
         {
@@ -106,7 +123,8 @@ public static class CreditEngine
     {
         if (amount.Amount <= 0m)
             return state;
-        if (!state.Loans.TryGetValue(loanId, out var loan))
+        var loan = ClaimLedger.LoanView(state).FirstOrDefault(candidate => candidate.Id.Equals(loanId));
+        if (loan is null)
             throw new InvalidOperationException($"Unknown loan {loanId}.");
         if (loan.Status is LoanStatus.Repaid or LoanStatus.Defaulted)
             throw new InvalidOperationException($"Loan {loanId} is {loan.Status}.");
@@ -136,7 +154,17 @@ public static class CreditEngine
                 Status = remaining.Amount <= 1e-12m ? LoanStatus.Repaid : loan.Status
             }
         };
-        return state with { Loans = loans };
+        state = state with { Loans = loans };
+        return EconomicTransactionEngine.Apply(
+            state,
+            new EconomicTransaction(
+                TransactionId.From(Guid.Empty),
+                [
+                    new SettleClaim(
+                        ClaimLedger.ClaimIdFor(loanId),
+                        new AssetAmount(state.MonetaryAssetId, pay.Amount))
+                ],
+                "loan-principal-settlement"));
     }
 }
 

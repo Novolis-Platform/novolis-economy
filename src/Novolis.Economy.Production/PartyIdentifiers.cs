@@ -25,8 +25,8 @@ public readonly record struct GeographicAreaId(Guid Value)
 {
   public static GeographicAreaId New() => new(Guid.NewGuid());
   public static GeographicAreaId From(Guid value) => new(value);
-  public Core.RegionId AsCore() => Core.RegionId.From(Value);
-  public static GeographicAreaId From(Core.RegionId id) => new(id.Value);
+  public Primitives.RegionId AsCore() => Primitives.RegionId.From(Value);
+  public static GeographicAreaId From(Primitives.RegionId id) => new(id.Value);
   public override string ToString() => Value.ToString("N");
 }
 

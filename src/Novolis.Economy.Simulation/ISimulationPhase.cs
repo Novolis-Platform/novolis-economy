@@ -5,13 +5,20 @@ namespace Novolis.Economy.Simulation;
 /// <summary>Per-tick context passed to phases.</summary>
 /// <param name="state">Mutable simulation state.</param>
 /// <param name="random">Seeded RNG.</param>
-public sealed class SimulationContext(SimulationState state, IEconomyRandom random)
+/// <param name="entropy">Named deterministic entropy streams.</param>
+public sealed class SimulationContext(
+  SimulationState state,
+  IEconomyRandom random,
+  SimulationEntropy? entropy = null)
 {
   /// <summary>Shared mutable state.</summary>
   public SimulationState State { get; } = state;
 
   /// <summary>Deterministic random source.</summary>
   public IEconomyRandom Random { get; } = random;
+
+  /// <summary>Named deterministic streams derived from the run seed.</summary>
+  public SimulationEntropy Entropy { get; } = entropy ?? state.Entropy;
 
   /// <summary>
   /// When true, non-essential hourly phases are skipped (decision apply + transport + hub match only).

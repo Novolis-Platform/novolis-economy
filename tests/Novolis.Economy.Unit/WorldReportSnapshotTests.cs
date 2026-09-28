@@ -17,12 +17,12 @@ public sealed class WorldReportSnapshotTests
 
         var snap = world.ToReportSnapshot();
         await Assert.That(snap.Ops.Ledgers.OpsTotalCash.Amount).IsEqualTo(75m);
-        await Assert.That(snap.Core).IsNull();
+        await Assert.That(snap.Core).IsNotNull();
 
         var text = WorldReportFormatter.Format(snap);
         await Assert.That(text).Contains("Ops");
         await Assert.That(text).Contains("Ops cash");
-        await Assert.That(text).Contains("(empty — no Core entities)");
+        await Assert.That(text).Contains("Core cash");
         await Assert.That(text.Contains("combined", StringComparison.OrdinalIgnoreCase)).IsFalse();
         await Assert.That(text.Contains("Ops cash + Core", StringComparison.OrdinalIgnoreCase)).IsFalse();
     }

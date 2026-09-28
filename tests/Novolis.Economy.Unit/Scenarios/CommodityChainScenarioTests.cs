@@ -56,7 +56,7 @@ public sealed class CommodityChainScenarioTests
       LaborHoursPerOutputUnit = 0.05m,
       PeriodHours = 24,
       EnableSpoilage = false,
-    });
+    }, RegistrationMode.Implicit);
 
     var firm = FirmId.From(builder.NextGuid());
     var facility = FacilityId.From(builder.NextGuid());

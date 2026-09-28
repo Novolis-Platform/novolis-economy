@@ -7,7 +7,7 @@ using Novolis.Economy.Simulation;
 using Novolis.Economy.Simulation.Extensions;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 
 namespace Novolis.Economy.Unit;
 
@@ -44,7 +44,7 @@ public sealed class EconomyWorldExtensionsTests
         await Assert.That(snap.Ops.Ledgers.FirmCount).IsGreaterThanOrEqualTo(1);
         await Assert.That(snap.Ops.Inventory.SlotCount).IsEqualTo(1);
         await Assert.That(snap.Ops.Cohorts.Count).IsEqualTo(1);
-        await Assert.That(snap.Core).IsNull();
+        await Assert.That(snap.Core).IsNotNull();
 
         var text = WorldReportFormatter.Format(snap);
         await Assert.That(text).Contains("inventory slots 1");

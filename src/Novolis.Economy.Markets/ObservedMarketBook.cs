@@ -104,7 +104,7 @@ public sealed class ObservedMarketBook
     var hash = offset;
     foreach (var (id, tape) in _tape.OrderBy(kv => kv.Key.Value))
     {
-      hash = (hash ^ (ulong)id.Value.GetHashCode()) * prime;
+      hash = (hash ^ StableIdentityHash.Guid(id.Value)) * prime;
       hash = (hash ^ (ulong)tape.TradeCount) * prime;
       foreach (var b in decimal.GetBits(tape.LastPrice.Amount))
       {

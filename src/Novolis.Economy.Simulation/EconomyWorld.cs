@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Novolis.Economy;
 using Novolis.Economy.Accounting;
 using Novolis.Economy.Core;
+using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Markets;
 using Novolis.Economy.Population;
@@ -17,6 +18,16 @@ public enum CohortBudgetResetMode
 
   /// <summary>Leave <c>BudgetRemaining</c> unchanged (closed-loop credit stock).</summary>
   CarryForward = 1,
+}
+
+/// <summary>Controls whether integration code may create missing Core facts.</summary>
+public enum RegistrationMode
+{
+  /// <summary>Missing entities, assets, and regions are errors.</summary>
+  Strict = 0,
+
+  /// <summary>Legacy game integration may create generic facts explicitly.</summary>
+  Implicit = 1,
 }
 
 /// <summary>Simulation policy knobs.</summary>
@@ -125,13 +136,25 @@ public sealed class FacilityBinding
 public sealed class EconomyWorld
 {
   /// <summary>Creates an empty world.</summary>
-  public EconomyWorld(EconomyPolicy? policy = null)
+  public EconomyWorld(
+    EconomyPolicy? policy = null,
+    RegistrationMode registrationMode = RegistrationMode.Strict,
+    EconomyModelSpecification? modelSpecification = null)
   {
     Policy = policy ?? new EconomyPolicy();
+    Registration = registrationMode;
+    Specification = modelSpecification ?? EconomyModelSpecification.Default;
+    CoreState = CoreState with { ModelSpecification = Specification };
   }
 
   /// <summary>Policy.</summary>
   public EconomyPolicy Policy { get; }
+
+  /// <summary>Registration policy chosen by the scenario host.</summary>
+  public RegistrationMode Registration { get; }
+
+  /// <summary>Serializable behavioral specification for this world.</summary>
+  public EconomyModelSpecification Specification { get; }
 
   /// <summary>Product catalog.</summary>
   public Dictionary<ProductId, ProductDefinition> Products { get; } = new();
@@ -394,7 +417,7 @@ public sealed class EconomyWorld
     hash = (hash ^ (ulong)RetailPrices.Count) * prime;
     foreach (var (key, price) in RetailPrices.OrderBy(kv => kv.Key.Firm.Value).ThenBy(kv => kv.Key.Product.Value))
     {
-      hash = (hash ^ (ulong)key.Product.Value.GetHashCode()) * prime;
+      hash = (hash ^ HashGuid(key.Product.Value)) * prime;
       foreach (var b in decimal.GetBits(price.Amount))
       {
         hash = (hash ^ (ulong)(uint)b) * prime;
@@ -415,7 +438,7 @@ public sealed class EconomyWorld
       hash = (hash ^ (entity.CreditFrozen ? 1UL : 0UL)) * prime;
       if (entity.RegistryId is { } reg)
       {
-        hash = (hash ^ (ulong)(uint)reg.GetHashCode()) * prime;
+        hash = (hash ^ HashString(reg)) * prime;
       }
     }
 
@@ -423,12 +446,72 @@ public sealed class EconomyWorld
                .OrderBy(c => c.IssuerFirmId.Value)
                .ThenBy(c => c.OwnerFirmId.Value))
     {
-      hash = (hash ^ (ulong)claim.IssuerFirmId.Value.GetHashCode()) * prime;
-      hash = (hash ^ (ulong)claim.OwnerFirmId.Value.GetHashCode()) * prime;
+      hash = (hash ^ HashGuid(claim.IssuerFirmId.Value)) * prime;
+      hash = (hash ^ HashGuid(claim.OwnerFirmId.Value)) * prime;
       foreach (var b in decimal.GetBits(claim.Fraction))
       {
         hash = (hash ^ (ulong)(uint)b) * prime;
       }
+    }
+
+    hash = (hash ^ (ulong)CoreState.Period) * prime;
+    hash = (hash ^ HashGuid(CoreState.MonetaryAssetId.Value)) * prime;
+    foreach (var entity in CoreState.Entities.Values.OrderBy(e => e.Id.Value))
+    {
+      hash = (hash ^ HashGuid(entity.Id.Value)) * prime;
+      hash = (hash ^ (ulong)entity.Kind) * prime;
+      foreach (var b in decimal.GetBits(CashLedger.Balance(CoreState, entity.Id).Amount))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    foreach (var (key, position) in CoreState.PositionState.OrderBy(pair => pair.Key))
+    {
+      hash = (hash ^ HashString(key)) * prime;
+      foreach (var b in decimal.GetBits(position.Quantity))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    foreach (var claim in ClaimLedger.Snapshot(CoreState).Values.OrderBy(c => c.Id.Value))
+    {
+      hash = (hash ^ HashGuid(claim.Id.Value)) * prime;
+      hash = (hash ^ HashGuid(claim.Creditor.Value)) * prime;
+      hash = (hash ^ HashGuid(claim.Debtor.Value)) * prime;
+      hash = (hash ^ HashGuid(claim.Principal.Asset.Value)) * prime;
+      foreach (var b in decimal.GetBits(claim.Principal.Quantity))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    return hash;
+  }
+
+  private static ulong HashGuid(Guid value)
+  {
+    var bytes = value.ToByteArray();
+    const ulong offset = 14695981039346656037UL;
+    const ulong prime = 1099511628211UL;
+    var hash = offset;
+    foreach (var b in bytes)
+    {
+      hash = (hash ^ b) * prime;
+    }
+
+    return hash;
+  }
+
+  private static ulong HashString(string value)
+  {
+    const ulong offset = 14695981039346656037UL;
+    const ulong prime = 1099511628211UL;
+    var hash = offset;
+    foreach (var b in System.Text.Encoding.UTF8.GetBytes(value))
+    {
+      hash = (hash ^ b) * prime;
     }
 
     return hash;

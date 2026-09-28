@@ -138,9 +138,9 @@ public sealed class InventoryStore
     var hash = offset;
     foreach (var key in _lots.Keys.OrderBy(k => k.FirmId.Value).ThenBy(k => k.LocationId.Value).ThenBy(k => k.ProductId.Value))
     {
-      hash = (hash ^ (ulong)key.FirmId.Value.GetHashCode()) * prime;
-      hash = (hash ^ (ulong)key.LocationId.Value.GetHashCode()) * prime;
-      hash = (hash ^ (ulong)key.ProductId.Value.GetHashCode()) * prime;
+      hash = (hash ^ StableIdentityHash.Guid(key.FirmId.Value)) * prime;
+      hash = (hash ^ StableIdentityHash.Guid(key.LocationId.Value)) * prime;
+      hash = (hash ^ StableIdentityHash.Guid(key.ProductId.Value)) * prime;
       foreach (var lot in _lots[key])
       {
         foreach (var b in decimal.GetBits(lot.Quantity.Value))

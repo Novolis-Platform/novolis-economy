@@ -1,4 +1,5 @@
 using Novolis.Economy.Core.Finance;
+using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Labor;
 
@@ -9,7 +10,7 @@ public static class EconomyStateExtensions
 {
     /// <summary>Sum of all entity vault cash.</summary>
     public static Money TotalCash(this EconomyState state) =>
-        Money.From(state.Entities.Values.Sum(e => e.Cash.Amount));
+        Money.From(state.Entities.Keys.Sum(id => CashLedger.Balance(state, id).Amount));
 
     /// <summary>Sum of all deposit balances (inside money).</summary>
     public static Money TotalDeposits(this EconomyState state) =>
@@ -22,7 +23,7 @@ public static class EconomyStateExtensions
     /// <summary>Principal on performing and delinquent loans.</summary>
     public static Money LoanPrincipalOutstanding(this EconomyState state) =>
         Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
 
@@ -47,7 +48,9 @@ public static class EconomyStateExtensions
     public static IReadOnlyDictionary<LegalEntityKind, Money> CashByKind(this EconomyState state) =>
         state.Entities.Values
             .GroupBy(e => e.Kind)
-            .ToDictionary(g => g.Key, g => Money.From(g.Sum(e => e.Cash.Amount)));
+            .ToDictionary(
+                g => g.Key,
+                g => Money.From(g.Sum(e => CashLedger.Balance(state, e.Id).Amount)));
 
     /// <summary>Entities whose liquidity surplus is negative (due-now exceeds accessible means).</summary>
     public static IReadOnlyList<LegalEntityId> IlliquidEntities(this EconomyState state) =>
@@ -85,7 +88,7 @@ public static class EconomyStateExtensions
     /// <summary>Compact macro snapshot for logging / UI.</summary>
     public static EconomySnapshot Snapshot(this EconomyState state)
     {
-        var loans = state.Loans.Values.ToList();
+        var loans = ClaimLedger.LoanView(state).ToList();
         var obligations = state.Obligations;
         return new EconomySnapshot(
             Period: state.Period,
@@ -94,7 +97,7 @@ public static class EconomyStateExtensions
             CohortCount: state.Cohorts.Count,
             HouseholdCount: state.TotalHouseholds(),
             ActivityCount: state.Activities.Count,
-            HoldingSlots: state.Holdings.Count,
+            HoldingSlots: state.PositionState.Count,
             InFlightTransfers: state.Transfers.Count,
             PerformingLoans: loans.Count(l => l.Status == LoanStatus.Performing),
             DelinquentLoans: loans.Count(l => l.Status == LoanStatus.Delinquent),
@@ -124,11 +127,11 @@ public static class EconomyStateExtensions
         var liq = Liquidity.Of(state, id);
         var solvency = Liquidity.SimpleSolvency(state, id);
         var asBorrower = Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Borrower.Equals(id) && l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
         var asLender = Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Lender.Equals(id) && l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
         var receivable = Money.From(
@@ -139,7 +142,7 @@ public static class EconomyStateExtensions
         return new EntityFinancialInsight(
             Id: id,
             Kind: entity.Kind,
-            Cash: entity.Cash,
+            Cash: CashLedger.Balance(state, entity.Id),
             Deposits: DepositLedger.TotalFor(state, id),
             LoansAsBorrower: asBorrower,
             LoansAsLender: asLender,
@@ -170,7 +173,7 @@ public static class EconomyStateExtensions
         var remainingLog = RegionCapacity.RemainingLogistics(state, region);
         var labor = LaborSupply.Calculate(state, regionId);
         var activities = state.Activities.Values.Count(a => a.RegionId.Equals(regionId));
-        var holdings = state.Holdings.Values
+        var holdings = PositionLedger.ResourceView(state)
             .Where(h => h.RegionId.Equals(regionId))
             .Sum(h => h.Quantity);
 
@@ -210,7 +213,9 @@ public static class EconomyStateExtensions
             f.TaxCollected,
             f.TransfersPaid,
             f.ProductionOutputValue,
-            f.WagesAccrued);
+            f.WagesAccrued,
+            f.ProductionQuantities,
+            f.ConsumptionQuantities);
     }
 
     /// <summary>Obligation book: counts, sums, due-now, pending by kind.</summary>
@@ -244,7 +249,7 @@ public static class EconomyStateExtensions
     public static CreditBookInsight CreditBook(this EconomyState state)
     {
         var facilities = state.CreditFacilities.Values.ToList();
-        var loans = state.Loans.Values.ToList();
+        var loans = ClaimLedger.LoanView(state).ToList();
         return new CreditBookInsight(
             FacilityCount: facilities.Count,
             FacilityLimitTotal: Money.From(facilities.Sum(f => f.Limit.Amount)),

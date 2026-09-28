@@ -8,14 +8,6 @@ public readonly record struct LegalEntityId(Guid Value)
     public override string ToString() => Value.ToString("N");
 }
 
-/// <summary>Strong id for a region.</summary>
-public readonly record struct RegionId(Guid Value)
-{
-    public static RegionId From(Guid value) => new(value);
-    public static RegionId New() => new(Guid.NewGuid());
-    public override string ToString() => Value.ToString("N");
-}
-
 /// <summary>Strong id for a household cohort.</summary>
 public readonly record struct CohortId(Guid Value)
 {

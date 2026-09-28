@@ -29,7 +29,13 @@ public static class ObligationEngine
     {
         if (amount.Amount <= 0m)
             return state;
-        var id = ObligationId.New();
+        var id = DeterministicIds.ObligationIdFor(
+            state,
+            debtor,
+            creditor,
+            amount,
+            duePeriod,
+            kind);
         var list = new List<PaymentObligation>(state.Obligations)
         {
             new(id, debtor, creditor, amount, duePeriod, kind, ObligationStatus.Pending)
@@ -74,9 +80,12 @@ public static class ObligationEngine
 
     private static bool TryPay(ref EconomyState state, LegalEntityId debtor, LegalEntityId creditor, Money amount)
     {
-        if (CashLedger.TryDebit(ref state, debtor, amount))
+        if (!state.Entities.ContainsKey(debtor) || !state.Entities.ContainsKey(creditor))
+            return false;
+
+        if (CashLedger.Balance(state, debtor).Amount + 1e-12m >= amount.Amount)
         {
-            state = CashLedger.Credit(state, creditor, amount);
+            state = CashLedger.Transfer(state, debtor, creditor, amount);
             return true;
         }
 

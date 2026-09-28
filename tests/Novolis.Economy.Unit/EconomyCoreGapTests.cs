@@ -7,7 +7,7 @@ using Novolis.Economy.Markets;
 using Novolis.Economy.Markets.Extensions;
 using Novolis.Economy.Population;
 using Novolis.Economy.Population.Extensions;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 

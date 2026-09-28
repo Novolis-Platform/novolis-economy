@@ -27,14 +27,28 @@ public sealed class SimulationState
     ArgumentNullException.ThrowIfNull(world);
     Seed = seed;
     World = world;
+    World.CoreState = World.CoreState with { SimulationSeed = seed };
+    Entropy = new SimulationEntropy(seed);
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
     _cachedWorldFingerprint = world.Fingerprint();
+    Manifest = new SimulationRunManifest(
+      world.Specification.Version,
+      seed,
+      _cachedWorldFingerprint,
+      world.Policy.PeriodHours,
+      typeof(SimulationState).Assembly.GetName().Version?.ToString() ?? "unknown");
     RecomputeHash();
   }
 
   /// <summary>Initial RNG seed.</summary>
   public ulong Seed { get; }
+
+  /// <summary>Named deterministic entropy streams for this run.</summary>
+  public SimulationEntropy Entropy { get; }
+
+  /// <summary>Reproducibility metadata captured at run creation.</summary>
+  public SimulationRunManifest Manifest { get; }
 
   /// <summary>Economic world.</summary>
   public EconomyWorld World { get; }

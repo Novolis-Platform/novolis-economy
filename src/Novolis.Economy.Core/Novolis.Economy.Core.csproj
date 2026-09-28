@@ -11,5 +11,8 @@
       Self-contained stock–flow aggregate; not yet woven into Simulation / Logistics.
     </Description>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy.Primitives\Novolis.Economy.Primitives.csproj" />
+  </ItemGroup>
 </Project>
 

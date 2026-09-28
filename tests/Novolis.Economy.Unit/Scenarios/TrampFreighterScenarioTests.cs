@@ -382,7 +382,7 @@ public sealed class TrampFreighterScenarioTests
       WageRatePerHour = Money.From(12m),
       LaborHoursPerOutputUnit = 0.1m,
       PeriodHours = 24,
-    });
+    }, RegistrationMode.Implicit);
 
     var tramp = FirmId.From(Guid.Parse("00000000-0000-4000-8000-0000000000a1"));
     var liner = FirmId.From(Guid.Parse("00000000-0000-4000-8000-0000000000a2"));

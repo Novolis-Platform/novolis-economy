@@ -23,6 +23,9 @@ public sealed record HouseholdProfile(
 /// <summary>
 /// Aggregate of similar households (SPEC §4).
 /// <paramref name="HouseholdEntityId"/> is a Core extension linking the cohort to a Household legal entity for wages/dividends/claims.
+/// <paramref name="CashPerHousehold"/> is a legacy cohort-level compatibility
+/// projection. Authoritative monetary holdings belong to the linked entity's
+/// economic position; this value is not used as a second money stock.
 /// </summary>
 public sealed record HouseholdCohort(
     CohortId Id,
@@ -37,7 +40,8 @@ public sealed record HouseholdCohort(
 public sealed record Resource(
     ResourceId Id,
     string Name,
-    ResourceKind Kind);
+    ResourceKind Kind,
+    EconomicAssetId AssetId = default);
 
 /// <summary>Quantity of a resource.</summary>
 public sealed record ResourceAmount(ResourceId ResourceId, decimal Quantity);
@@ -101,6 +105,19 @@ public sealed record Loan(
     LegalEntityId Lender,
     LegalEntityId Borrower,
     Money PrincipalOutstanding,
+    decimal InterestRatePerPeriod,
+    int RemainingPeriods,
+    LoanStatus Status);
+
+/// <summary>
+/// Authoritative economic claim. Finance owns how a loan behaves; Core owns
+/// who is owed the outstanding quantity and who owes it.
+/// </summary>
+public sealed record FinancialClaim(
+    ClaimId Id,
+    EconomicEntityId Creditor,
+    EconomicEntityId Debtor,
+    AssetAmount Principal,
     decimal InterestRatePerPeriod,
     int RemainingPeriods,
     LoanStatus Status);

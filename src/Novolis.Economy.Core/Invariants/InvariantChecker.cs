@@ -1,4 +1,5 @@
 using Novolis.Economy.Core.Finance;
+using Novolis.Economy.Core.Holdings;
 
 namespace Novolis.Economy.Core.Invariants;
 
@@ -36,23 +37,36 @@ public static class InvariantChecker
     {
         foreach (var e in state.Entities.Values)
         {
-            if (e.Cash.Amount < -1e-9m)
-                list.Add(new("CASH_NEG", $"Entity {e.Id} has negative cash {e.Cash}."));
+            var cash = CashLedger.Balance(state, e.Id);
+            if (cash.Amount < -1e-9m)
+                list.Add(new("CASH_NEG", $"Entity {e.Id} has negative cash {cash}."));
         }
     }
 
     private static void CheckHoldings(EconomyState state, List<InvariantViolation> list)
     {
-        foreach (var h in state.Holdings.Values)
+        foreach (var holding in state.Holdings.Values)
         {
-            if (h.Quantity < -1e-9m)
-                list.Add(new("HOLD_NEG", $"Holding {h.Owner}/{h.RegionId}/{h.ResourceId} negative."));
-            if (!state.Entities.ContainsKey(h.Owner))
-                list.Add(new("HOLD_OWNER", $"Holding owner {h.Owner} missing."));
-            if (!state.Regions.ContainsKey(h.RegionId))
-                list.Add(new("HOLD_REGION", $"Holding region {h.RegionId} missing."));
-            if (!state.Resources.ContainsKey(h.ResourceId))
-                list.Add(new("HOLD_RES", $"Holding resource {h.ResourceId} missing."));
+            if (holding.Quantity < -1e-9m)
+            {
+                list.Add(
+                    new(
+                        "HOLD_NEG",
+                        $"Holding {holding.Owner}/{holding.RegionId}/{holding.ResourceId} negative."));
+            }
+        }
+
+        foreach (var position in PositionLedger.Snapshot(state).Values)
+        {
+            if (position.Quantity < -1e-9m)
+                list.Add(new("POSITION_NEG", $"Position {position.Owner}/{position.Region}/{position.Asset} negative."));
+
+            var owner = EconomicIdentity.ToLegalEntityId(position.Owner);
+            if (!state.Entities.ContainsKey(owner))
+                list.Add(new("POSITION_OWNER", $"Position owner {position.Owner} missing."));
+
+            if (position.Region is { } region && !state.Regions.ContainsKey(region))
+                list.Add(new("POSITION_REGION", $"Position region {region} missing."));
         }
 
         foreach (var t in state.Transfers)
@@ -97,6 +111,17 @@ public static class InvariantChecker
 
     private static void CheckLoans(EconomyState state, List<InvariantViolation> list)
     {
+        foreach (var claim in ClaimLedger.Snapshot(state).Values)
+        {
+            if (claim.Principal.Quantity < -1e-9m)
+                list.Add(new("CLAIM_NEG", $"Claim {claim.Id} negative principal."));
+            if (!state.Entities.ContainsKey(EconomicIdentity.ToLegalEntityId(claim.Creditor)) ||
+                !state.Entities.ContainsKey(EconomicIdentity.ToLegalEntityId(claim.Debtor)))
+            {
+                list.Add(new("CLAIM_PARTY", $"Claim {claim.Id} missing party."));
+            }
+        }
+
         foreach (var loan in state.Loans.Values)
         {
             if (loan.PrincipalOutstanding.Amount < -1e-9m)

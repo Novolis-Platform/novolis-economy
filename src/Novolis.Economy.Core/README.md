@@ -76,7 +76,9 @@ Enforced in install/migrate/transfer paths and `InvariantChecker`.
 
 ## 4. Household cohorts
 
-Cohorts are **aggregates**: `HouseholdCount × CashPerHousehold = TotalCash` (`HouseholdMath`).
+Cohorts are **aggregates**. `CashPerHousehold` is retained as a
+compatibility spending constraint for unlinked cohorts; authoritative monetary
+wealth lives in linked household economic positions.
 
 Profiles: consumption weight, savings preference, labor quality, migration preference.
 

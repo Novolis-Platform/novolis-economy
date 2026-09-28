@@ -4,6 +4,7 @@ using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Labor;
 using Novolis.Economy.Core.Production;
 using Novolis.Economy.Core.Transport;
+using Novolis.Economy.Core.Transactions;
 
 namespace Novolis.Economy.Core.Steps;
 
@@ -43,7 +44,7 @@ public sealed class ApplyPolicyStep : IEconomyStep
                     continue;
                 if (cohort.HouseholdEntityId is { } hid && state.Entities.ContainsKey(hid))
                 {
-                    if (state.Entities[stateEntity.Id].Cash.Amount + 1e-12m < total.Amount)
+                    if (CashLedger.Balance(state, stateEntity.Id).Amount + 1e-12m < total.Amount)
                         break;
                     state = CashLedger.Transfer(state, stateEntity.Id, hid, total);
                     state = state.WithFlows(state.Flows.RecordTransfer(total));
@@ -51,7 +52,7 @@ public sealed class ApplyPolicyStep : IEconomyStep
                 else
                 {
                     // Credit cash-per-household when no entity link (still debit State)
-                    if (state.Entities[stateEntity.Id].Cash.Amount + 1e-12m < total.Amount)
+                    if (CashLedger.Balance(state, stateEntity.Id).Amount + 1e-12m < total.Amount)
                         break;
                     state = CashLedger.Debit(state, stateEntity.Id, total);
                     var cohorts = new Dictionary<CohortId, HouseholdCohort>(state.Cohorts)
@@ -170,8 +171,25 @@ public sealed class ApplyProductionStep : IEconomyStep
             if (runCount <= 0m || !current.Activities.TryGetValue(activityId, out var activity))
                 continue;
             state = ProductionCalculator.ApplyRuns(state, activity, runCount);
-            var outputQty = activity.Recipe.Outputs.Sum(o => o.Quantity * runCount);
-            state = state.WithFlows(state.Flows.RecordProduction(Money.From(outputQty)));
+            foreach (var input in activity.Recipe.Inputs)
+            {
+                if (input.Quantity <= 0m)
+                    continue;
+                state = state.WithFlows(
+                    state.Flows.RecordConsumedQuantity(
+                        state.AssetFor(input.ResourceId),
+                        input.Quantity * runCount));
+            }
+
+            foreach (var output in activity.Recipe.Outputs)
+            {
+                if (output.Quantity <= 0m)
+                    continue;
+                state = state.WithFlows(
+                    state.Flows.RecordProductionQuantity(
+                        state.AssetFor(output.ResourceId),
+                        output.Quantity * runCount));
+            }
         }
 
         return state;
@@ -207,9 +225,13 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
             if (cohort.HouseholdEntityId is not { } buyerId || !state.Entities.ContainsKey(buyerId))
                 continue;
 
+            var availableCash = cohort.HouseholdEntityId is { } linkedHousehold &&
+                                state.Entities.ContainsKey(linkedHousehold)
+                ? CashLedger.Balance(state, linkedHousehold).Amount
+                : HouseholdMath.TotalCash(cohort).Amount;
             var budget = Money.From(
-                HouseholdMath.TotalCash(cohort).Amount * Math.Clamp(cohort.Profile.ConsumptionWeight, 0m, 1m));
-            budget = Money.From(Math.Min(budget.Amount, state.Entities[buyerId].Cash.Amount));
+                availableCash * Math.Clamp(cohort.Profile.ConsumptionWeight, 0m, 1m));
+            budget = Money.From(Math.Min(budget.Amount, CashLedger.Balance(state, buyerId).Amount));
 
             foreach (var price in state.PostedPrices.Values.Where(p => p.RegionId.Equals(cohort.RegionId)))
             {
@@ -219,7 +241,7 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                     res.Kind != ResourceKind.ConsumerGood)
                     continue;
 
-                var sellers = state.Holdings.Values
+                var sellers = PositionLedger.ResourceView(state)
                     .Where(h => h.RegionId.Equals(cohort.RegionId) &&
                                 h.ResourceId.Equals(price.ResourceId) &&
                                 h.Quantity > 0m &&
@@ -240,9 +262,52 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                     var cost = Money.From(qty * price.UnitPrice.Amount);
                     try
                     {
-                        state = HoldingLedger.TransferOwnership(
-                            state, holding.Owner, buyerId, cohort.RegionId, price.ResourceId, qty);
-                        state = CashLedger.Transfer(state, buyerId, holding.Owner, cost);
+                        var asset = state.AssetFor(price.ResourceId);
+                        state = CashLedger.EnsurePosition(state, buyerId);
+                        state = CashLedger.EnsurePosition(state, holding.Owner);
+                        state = EconomicTransactionEngine.Apply(
+                            state,
+                            new EconomicTransaction(
+                                TransactionId.From(Guid.Empty),
+                                [
+                                    new PositionChange(
+                                        EconomicIdentity.For(holding.Owner),
+                                        asset,
+                                        -qty,
+                                        cohort.RegionId),
+                                    new PositionChange(
+                                        EconomicIdentity.For(buyerId),
+                                        asset,
+                                        qty,
+                                        cohort.RegionId),
+                                    new PositionChange(
+                                        EconomicIdentity.For(buyerId),
+                                        state.MonetaryAssetId,
+                                        -cost.Amount,
+                                        Region: null),
+                                    new PositionChange(
+                                        EconomicIdentity.For(holding.Owner),
+                                        state.MonetaryAssetId,
+                                        cost.Amount,
+                                        Region: null)
+                                ],
+                                "posted-price-purchase"));
+                        state = PositionLedger.UpdateLegacyResourceProjection(
+                            state,
+                            holding.Owner,
+                            cohort.RegionId,
+                            price.ResourceId,
+                            holding.Quantity - qty);
+                        state = PositionLedger.UpdateLegacyResourceProjection(
+                            state,
+                            buyerId,
+                            cohort.RegionId,
+                            price.ResourceId,
+                            PositionLedger.GetQuantity(
+                                state,
+                                EconomicIdentity.For(buyerId),
+                                cohort.RegionId,
+                                asset));
                         budget = budget - cost;
                         state = state.WithFlows(state.Flows.RecordCashMoved(cost));
                     }
@@ -295,8 +360,9 @@ public sealed class CreateObligationsStep : IEconomyStep
         }
 
         // Interest on performing loans
-        var loans = new Dictionary<LoanId, Loan>(state.Loans);
-        foreach (var loan in state.Loans.Values.Where(l => l.Status == LoanStatus.Performing))
+        var loans = ClaimLedger.LoanView(state)
+            .ToDictionary(loan => loan.Id);
+        foreach (var loan in loans.Values.Where(l => l.Status == LoanStatus.Performing))
         {
             var interest = Money.From(loan.PrincipalOutstanding.Amount * loan.InterestRatePerPeriod);
             if (interest.Amount <= 0m)
@@ -311,9 +377,10 @@ public sealed class CreateObligationsStep : IEconomyStep
         }
 
         state = state with { Loans = loans };
+        state = ClaimLedger.SyncFromLegacyLoans(state);
 
         // Principal due when term expired
-        foreach (var loan in state.Loans.Values.Where(l =>
+        foreach (var loan in loans.Values.Where(l =>
                      l.Status == LoanStatus.Performing && l.RemainingPeriods <= 0))
         {
             if (loan.PrincipalOutstanding.Amount <= 0m)
@@ -353,9 +420,10 @@ public sealed class CreateObligationsStep : IEconomyStep
                     LegalEntityKind.Firm => state.Policy.FirmTaxRate,
                     _ => 0m
                 };
-                if (rate <= 0m || entity.Cash.Amount <= 0m)
+                var entityCash = CashLedger.Balance(state, entity.Id);
+                if (rate <= 0m || entityCash.Amount <= 0m)
                     continue;
-                var tax = Money.From(entity.Cash.Amount * rate);
+                var tax = Money.From(entityCash.Amount * rate);
                 state = ObligationEngine.Create(
                     state, entity.Id, treasury.Id, tax, due, ObligationKind.Tax);
                 state = state.WithFlows(state.Flows.RecordTax(tax));
@@ -417,7 +485,12 @@ public sealed class DrawCreditStep : IEconomyStep
                 continue;
             try
             {
-                state = CreditEngine.DrawFacility(state, facility.Id, need, interestRatePerPeriod: 0.01m, termPeriods: 4);
+                state = CreditEngine.DrawFacility(
+                    state,
+                    facility.Id,
+                    need,
+                    interestRatePerPeriod: state.Specification.Credit.FacilityInterestRatePerPeriod,
+                    termPeriods: state.Specification.Credit.FacilityTermPeriods);
             }
             catch (InvalidOperationException)
             {
@@ -447,8 +520,9 @@ public sealed class MarkDelinquencyStep : IEconomyStep
                 obligations[i] = o with { Status = ObligationStatus.Defaulted };
         }
 
-        var loans = new Dictionary<LoanId, Loan>(current.Loans);
-        foreach (var loan in current.Loans.Values)
+        var loans = ClaimLedger.LoanView(current)
+            .ToDictionary(loan => loan.Id);
+        foreach (var loan in loans.Values)
         {
             if (loan.Status is not (LoanStatus.Performing or LoanStatus.Delinquent))
                 continue;
@@ -482,7 +556,8 @@ public sealed class MarkDelinquencyStep : IEconomyStep
                 loans[loan.Id] = loan with { Status = LoanStatus.Repaid };
         }
 
-        return current with { Obligations = obligations, Loans = loans };
+        var next = current with { Obligations = obligations, Loans = loans };
+        return ClaimLedger.SyncFromLegacyLoans(next);
     }
 }
 
@@ -494,11 +569,11 @@ public sealed class DistributeDividendsStep : IEconomyStep
     public EconomyState Execute(EconomyState current)
     {
         var state = current;
-        const decimal retention = 10m;
+        var retention = state.Specification.Dividends.RetainedCashFloor;
 
         foreach (var firm in state.Entities.Values.Where(e => e.Kind == LegalEntityKind.Firm))
         {
-            var distributable = firm.Cash.Amount - retention;
+            var distributable = CashLedger.Balance(state, firm.Id).Amount - retention;
             if (distributable <= 0m)
                 continue;
 
@@ -536,7 +611,7 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
             if (cohort.HouseholdEntityId is not { } hid)
                 continue;
             var consumeRate = Math.Clamp(cohort.Profile.ConsumptionWeight, 0m, 1m);
-            var holdings = state.Holdings.Values
+            var holdings = PositionLedger.ResourceView(state)
                 .Where(h => h.Owner.Equals(hid) && h.RegionId.Equals(cohort.RegionId))
                 .ToList();
             foreach (var h in holdings)
@@ -555,7 +630,7 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
         var cohorts = new Dictionary<CohortId, HouseholdCohort>(state.Cohorts);
         var migrated = 0;
         var taxRate = state.Policy.HouseholdTaxRate;
-        var taxPush = taxRate >= 0.28m;
+        var taxPush = taxRate >= state.Specification.Migration.TaxPushThreshold;
 
         foreach (var cohort in state.Cohorts.Values.ToList())
         {
@@ -569,7 +644,9 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
             // Recompute living using current cohort map
             var tempState = state with { Cohorts = cohorts };
             var overflow = RegionCapacity.RemainingLiving(tempState, home) < 0;
-            var taxMotivated = taxPush && cohort.Profile.MigrationPreference >= 0.65m;
+            var taxMotivated = taxPush &&
+                               cohort.Profile.MigrationPreference >=
+                               state.Specification.Migration.MinimumMigrationPreference;
             if (!overflow && !taxMotivated)
                 continue;
 
@@ -601,7 +678,11 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
             else
             {
                 cohorts[live.Id] = live with { HouseholdCount = live.HouseholdCount - move };
-                var splitId = CohortId.New();
+                var splitId = DeterministicIds.CohortSplitIdFor(
+                    state,
+                    live.Id,
+                    target.Id,
+                    move);
                 cohorts[splitId] = live with { Id = splitId, RegionId = target.Id, HouseholdCount = move };
                 migrated += move;
             }

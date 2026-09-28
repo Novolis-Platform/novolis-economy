@@ -24,7 +24,8 @@ public sealed record ProjectedBalanceSheet(
 
 /// <summary>
 /// Economy-wide period appropriation from <see cref="PeriodFlowLedger"/>.
-/// ProductionOutputValue is a flow counter (often quantity-as-money), not mercantile revenue.
+/// Production output is physical by asset; a monetary value is available only
+/// after an explicit valuation.
 /// </summary>
 public sealed record ProjectedPeriodIncome(
     Money MoneyCreated,
@@ -34,7 +35,14 @@ public sealed record ProjectedPeriodIncome(
     Money TaxCollected,
     Money TransfersPaid,
     Money ObligationsPaid,
-    Money ProductionOutputValue);
+    Money ProductionOutputValue,
+    IReadOnlyDictionary<EconomicAssetId, decimal>? ProductionOutputQuantity = null)
+{
+    /// <summary>Physical production quantities, empty for legacy snapshots.</summary>
+    public IReadOnlyDictionary<EconomicAssetId, decimal> PhysicalProduction =>
+        ProductionOutputQuantity ??
+        new Dictionary<EconomicAssetId, decimal>();
+}
 
 /// <summary>Sectoral stock aggregate for one institutional kind.</summary>
 public sealed record SectoralBooksRow(

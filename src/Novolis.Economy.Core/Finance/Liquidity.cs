@@ -6,7 +6,7 @@ public static class Liquidity
     /// <summary>Derive liquidity position for an entity.</summary>
     public static LiquidityPosition Of(EconomyState state, LegalEntityId id)
     {
-        var cash = state.Entities.TryGetValue(id, out var e) ? e.Cash : Money.Zero;
+        var cash = state.Entities.ContainsKey(id) ? CashLedger.Balance(state, id) : Money.Zero;
         var deposits = DepositLedger.TotalFor(state, id);
         var undrawn = Money.From(
             state.CreditFacilities.Values
@@ -29,7 +29,7 @@ public static class Liquidity
     {
         var liq = Of(state, id);
         var loansOwed = Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Borrower.Equals(id) && l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
         return liq.Cash + liq.AccessibleDeposits + liq.UndrawnCommittedCredit - loansOwed;

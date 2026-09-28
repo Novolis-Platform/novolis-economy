@@ -6,8 +6,9 @@ using Novolis.Economy.Logistics;
 namespace Novolis.Economy.Simulation;
 
 /// <summary>
-/// Bridges ops Logistics deliveries into Core holdings, and advances Core at period boundaries.
-/// Core remains the economic authority; this only mutates <see cref="EconomyWorld.CoreState"/>.
+/// Converts logistics delivery events into Core economic position changes and
+/// advances Core at period boundaries. Core remains the economic authority;
+/// this integration does not maintain a second ownership balance.
 /// </summary>
 public static class CoreEconomyBridge
 {
@@ -29,7 +30,18 @@ public static class CoreEconomyBridge
   {
     var region = regionId ?? RegionId.From(hubId.Value);
     world.HubRegions[hubId] = region;
-    world.CoreState = EnsureRegion(world.CoreState, region);
+    if (!world.CoreState.Regions.ContainsKey(region))
+    {
+      var regions = new Dictionary<RegionId, Region>(world.CoreState.Regions)
+      {
+        [region] = new Region(
+          region,
+          LivingCapacity: 1_000_000,
+          ProductionCapacity: 1_000_000,
+          LogisticsCapacity: 1_000_000)
+      };
+      world.CoreState = world.CoreState with { Regions = regions };
+    }
   }
 
   /// <summary>Apply a delivered shipment into Core holdings at the destination hub's region.</summary>
@@ -61,9 +73,9 @@ public static class CoreEconomyBridge
     var qty = shipment.Quantity.Value;
 
     var state = world.CoreState;
-    state = EnsureEntity(state, owner);
-    state = EnsureRegion(state, region);
-    state = EnsureResource(state, resource);
+    state = EnsureEntity(world, state, owner);
+    state = EnsureRegion(world, state, region);
+    state = EnsureResource(world, state, resource);
     state = HoldingLedger.Credit(state, owner, region, resource, qty);
     world.CoreState = state;
   }
@@ -74,11 +86,19 @@ public static class CoreEconomyBridge
     world.CoreState = PeriodEngine.Advance(world.CoreState);
   }
 
-  private static EconomyState EnsureEntity(EconomyState state, LegalEntityId id)
+  private static EconomyState EnsureEntity(
+    EconomyWorld world,
+    EconomyState state,
+    LegalEntityId id)
   {
     if (state.Entities.ContainsKey(id))
     {
       return state;
+    }
+
+    if (world.Registration != RegistrationMode.Implicit)
+    {
+      throw new UnknownEconomicEntityException(id);
     }
 
     var entities = new Dictionary<LegalEntityId, Core.LegalEntity>(state.Entities)
@@ -88,11 +108,19 @@ public static class CoreEconomyBridge
     return state with { Entities = entities };
   }
 
-  private static EconomyState EnsureRegion(EconomyState state, RegionId id)
+  private static EconomyState EnsureRegion(
+    EconomyWorld world,
+    EconomyState state,
+    RegionId id)
   {
     if (state.Regions.ContainsKey(id))
     {
       return state;
+    }
+
+    if (world.Registration != RegistrationMode.Implicit)
+    {
+      throw new UnknownRegionException(id);
     }
 
     var regions = new Dictionary<RegionId, Region>(state.Regions)
@@ -102,16 +130,28 @@ public static class CoreEconomyBridge
     return state with { Regions = regions };
   }
 
-  private static EconomyState EnsureResource(EconomyState state, ResourceId id)
+  private static EconomyState EnsureResource(
+    EconomyWorld world,
+    EconomyState state,
+    ResourceId id)
   {
     if (state.Resources.ContainsKey(id))
     {
       return state;
     }
 
+    if (world.Registration != RegistrationMode.Implicit)
+    {
+      throw new UnknownEconomicAssetException(id);
+    }
+
     var resources = new Dictionary<ResourceId, Resource>(state.Resources)
     {
-      [id] = new Resource(id, Name: id.ToString(), Kind: ResourceKind.IntermediateGood),
+      [id] = new Resource(
+        id,
+        Name: id.ToString(),
+        Kind: ResourceKind.IntermediateGood,
+        AssetId: EconomicAssetId.From(id.Value)),
     };
     return state with { Resources = resources };
   }

@@ -5,7 +5,7 @@ using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Steps;
 using Novolis.Economy.Core.Transport;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 using CoreObligationKind = Novolis.Economy.Core.ObligationKind;

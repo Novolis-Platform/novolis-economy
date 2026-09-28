@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Primitives</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Small BCL-only vocabulary for economic identities, quantities, positions, and money.</Description>
+    <RootNamespace>Novolis.Economy.Primitives</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>

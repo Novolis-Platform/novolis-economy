@@ -98,7 +98,7 @@ public sealed class EconomySimulationCreditSource : ICreditCirculationSource
 
   /// <inheritdoc />
   public decimal CoreHoldingQty =>
-    _sim.State.World.CoreState.Holdings.Values.Sum(h => h.Quantity);
+    _sim.State.World.CoreState.PositionState.Values.Sum(h => h.Quantity);
 
   /// <inheritdoc />
   public int CoreHoldingSlots => _sim.State.World.CoreState.Snapshot().HoldingSlots;

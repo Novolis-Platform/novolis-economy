@@ -9,6 +9,7 @@
     <PackageReference Include="TUnit" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/Novolis.Economy.Primitives/Novolis.Economy.Primitives.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Core/Novolis.Economy.Core.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Production/Novolis.Economy.Production.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Markets/Novolis.Economy.Markets.csproj" />

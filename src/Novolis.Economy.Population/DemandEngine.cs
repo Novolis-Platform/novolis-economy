@@ -17,7 +17,10 @@ public sealed class CohortState
   /// <summary>Static definition.</summary>
   public ConsumerCohort Definition { get; }
 
-  /// <summary>Unspent disposable income this period.</summary>
+  /// <summary>
+  /// Unspent discretionary spending constraint this period. This is not an
+  /// authoritative monetary holding; entity positions remain the money stock.
+  /// </summary>
   public Money BudgetRemaining { get; set; }
 
   /// <summary>Resets budget at period boundary.</summary>

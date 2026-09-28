@@ -49,7 +49,8 @@ public sealed class ManufacturingFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     HubOrderQuotes.CancelOpen(context, FirmId);
-    var rng = new DeterministicRandom(context.Simulation.State.Seed ^ _rngSalt ^ (ulong)FirmId.Value.GetHashCode());
+    var rng = context.Simulation.Entropy.Stream(
+      $"firms/{FirmId.Value:N}/manufacturing/{_rngSalt}");
     foreach (var site in _policy.Sites.Where(s => s.FacilityId is not null))
     {
       var loc = site.LocationId;

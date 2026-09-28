@@ -15,13 +15,30 @@ public sealed class EconomyWorldBuilder
   private int _seq;
 
   /// <summary>Creates a builder.</summary>
-  public EconomyWorldBuilder(EconomyPolicy? policy = null) =>
-    _world = new EconomyWorld(policy);
+  public EconomyWorldBuilder(
+    EconomyPolicy? policy = null,
+    RegistrationMode registrationMode = RegistrationMode.Strict,
+    EconomyModelSpecification? modelSpecification = null) =>
+    _world = new EconomyWorld(policy, registrationMode, modelSpecification);
 
   /// <summary>Registers a product definition.</summary>
   public EconomyWorldBuilder AddProduct(ProductDefinition product)
   {
     _world.Products[product.Id] = product;
+    var resourceId = product.Id.AsCore();
+    if (!_world.CoreState.Resources.ContainsKey(resourceId))
+    {
+      var resources = new Dictionary<ResourceId, Resource>(_world.CoreState.Resources)
+      {
+        [resourceId] = new Resource(
+          resourceId,
+          product.Id.ToString(),
+          ResourceKind.ConsumerGood,
+          EconomicAssetId.From(product.Id.Value))
+      };
+      _world.CoreState = _world.CoreState with { Resources = resources };
+    }
+
     return this;
   }
 
@@ -29,6 +46,11 @@ public sealed class EconomyWorldBuilder
   public EconomyWorldBuilder AddFirm(FirmId firmId, string name, Money openingCash)
   {
     var ledger = _world.EnsureFirm(firmId, name);
+    CoreMonetaryBridge.EnsureEntity(
+      _world,
+      firmId,
+      Core.LegalEntityKind.Firm,
+      openingCash);
     if (openingCash.Amount > 0m)
     {
       ledger.SeedCash(openingCash, SimulationDate.Epoch);
@@ -46,6 +68,11 @@ public sealed class EconomyWorldBuilder
   {
     var ledger = _world.EnsureFirm(firmId, name);
     _world.EnsureCivic(firmId, name, registryId);
+    CoreMonetaryBridge.EnsureEntity(
+      _world,
+      firmId,
+      Core.LegalEntityKind.State,
+      openingCash);
     if (openingCash.Amount > 0m)
     {
       ledger.SeedCash(openingCash, SimulationDate.Epoch);
@@ -61,14 +88,31 @@ public sealed class EconomyWorldBuilder
     int productionSlots)
   {
     _world.Regions[areaId] = new EconomicRegion(areaId, livingCapacityHouseholds, productionSlots);
+    var regionId = areaId.AsCore();
+    var regions = new Dictionary<RegionId, Region>(_world.CoreState.Regions)
+    {
+      [regionId] = new Region(
+        regionId,
+        livingCapacityHouseholds,
+        productionSlots,
+        LogisticsCapacity: productionSlots)
+    };
+    _world.CoreState = _world.CoreState with { Regions = regions };
     return this;
   }
 
   /// <summary>Sets an absolute ownership fraction (issuer must be Firm or Civic).</summary>
   public EconomyWorldBuilder SetOwnership(FirmId issuer, FirmId owner, decimal fraction)
   {
-    OwnershipEngine.TryAssign(
-      _world.OwnershipClaims, issuer, owner, fraction, _world.CanIssueShares);
+    if (OwnershipEngine.TryAssign(
+          _world.OwnershipClaims,
+          issuer,
+          owner,
+          fraction,
+          _world.CanIssueShares))
+    {
+      CoreOwnershipBridge.SyncIssuer(_world, issuer);
+    }
     return this;
   }
 

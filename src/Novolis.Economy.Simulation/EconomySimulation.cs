@@ -35,11 +35,14 @@ public sealed class EconomySimulation : IEconomySimulation
     State = new SimulationState(seed, world);
     _pipeline = pipeline;
     _random = new DeterministicRandom(seed);
-    _context = new SimulationContext(State, _random);
+    _context = new SimulationContext(State, _random, State.Entropy);
   }
 
   /// <inheritdoc />
   public SimulationState State { get; }
+
+  /// <summary>Named deterministic entropy for agents and phases.</summary>
+  public SimulationEntropy Entropy => State.Entropy;
 
   /// <summary>
   /// When true, hourly ticks skip non-essential economy phases (see <see cref="SimulationContext.ThroughputMode"/>).

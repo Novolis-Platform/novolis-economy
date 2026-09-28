@@ -279,16 +279,10 @@ Economically, the cohort represents many household legal entities. Computational
 
 ## Cohort accounting
 
-Values must be explicit about whether they are totals or per-household averages.
-
-For example:
-
-```text
-Total cohort cash
-= HouseholdCount × CashPerHousehold
-```
-
-Mixing aggregate and per-household values is one of the easiest ways to quietly corrupt the model.
+`CashPerHousehold` is a compatibility spending constraint for cohorts that
+have no linked household entity. It is not an authoritative monetary asset.
+When a cohort has `HouseholdEntityId`, monetary wealth is held by that entity's
+Core monetary position; cohort-level cash values are derived projections.
 
 ---
 
@@ -454,7 +448,8 @@ public readonly record struct ResourceId(Guid Value);
 public sealed record Resource(
     ResourceId Id,
     string Name,
-    ResourceKind Kind);
+    ResourceKind Kind,
+    EconomicAssetId AssetId);
 
 public enum ResourceKind
 {
@@ -466,6 +461,10 @@ public enum ResourceKind
 ```
 
 Resources are deliberately abstract.
+
+`ResourceId` names a production-domain definition. `AssetId` names the
+economic thing that can be owned or traded. The mapping is explicit; Core
+does not infer economic identity from a matching `Guid`.
 
 A model may contain:
 
@@ -487,6 +486,12 @@ It does not need thousands of product types unless substitution and production-c
 Ownership and location must both be explicit.
 
 ```csharp
+public readonly record struct EconomicPosition(
+    EconomicEntityId Owner,
+    EconomicAssetId Asset,
+    decimal Quantity,
+    RegionId? Region);
+
 public sealed record ResourceHolding(
     LegalEntityId Owner,
     RegionId RegionId,
@@ -497,6 +502,20 @@ public sealed record ResourceHolding(
 This record answers:
 
 > Who owns how much of which resource, and where is it?
+
+`ResourceHolding` is a one-release compatibility projection. The authoritative
+state is an `EconomicPosition`, keyed by:
+
+```text
+EconomicEntity × EconomicAsset × Region?
+```
+
+The position answers:
+
+> Which economic entity owns how much of asset A?
+
+It represents quantity, never monetary value. `HoldingLedger` retains the
+resource-shaped API while delegating to the position ledger.
 
 That is sufficient for:
 
@@ -1070,6 +1089,7 @@ public sealed record EconomyState(
     IReadOnlyDictionary<LegalEntityId, LegalEntity> Entities,
     IReadOnlyDictionary<CohortId, HouseholdCohort> Cohorts,
     IReadOnlyDictionary<ActivityId, Activity> Activities,
+    IReadOnlyDictionary<string, EconomicPosition> Positions,
     IReadOnlyList<ResourceHolding> Holdings,
     IReadOnlyList<ResourceTransfer> Transfers,
     IReadOnlyList<ShareHolding> Shares,
@@ -1078,7 +1098,8 @@ public sealed record EconomyState(
     IReadOnlyList<Deposit> Deposits,
     IReadOnlyList<PaymentObligation> Obligations,
     IReadOnlyList<InsuranceCoverage> Insurance,
-    StatePolicy Policy);
+    StatePolicy Policy,
+    IReadOnlyDictionary<ClaimId, FinancialClaim> Claims);
 ```
 
 The state transition is conceptually:
@@ -1102,6 +1123,10 @@ public sealed record EconomyEngine(
 ```
 
 The record types explain the model. They do not require the implementation to become an inheritance-heavy object simulation.
+
+The current 16-step pipeline is transitional orchestration. Simulation
+eventually owns the clock and invokes Core transitions; Core remains the
+authority that applies and validates those transitions.
 
 ---
 

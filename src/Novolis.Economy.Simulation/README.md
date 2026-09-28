@@ -14,6 +14,10 @@ Holds ops `LegalEntity` collections; `OwnershipClaim` lives in **Accounting**. E
 
 `EconomicRegion` + `AddRegion` / household `AddCohort` living clamp; region labor pools; production slots for mfg/assembly only.
 
+Registration is strict by default. Hosts that deliberately want game-friendly
+implicit Core entities, assets, or regions must pass
+`RegistrationMode.Implicit` to `EconomyWorld` or `EconomyWorldBuilder`.
+
 Does **not** reference `Novolis.Simulation.*` (spatial stack).
 
 ## Install
@@ -56,7 +60,7 @@ Custom phase order (tests): `new EconomySimulation(seed, world, PhasePipeline.Cr
 | `PhasePipeline` / `DefaultPhases` | Ordered hourly + period-close phases |
 | `ISimulationPhase` | Single phase hook |
 | `SimulationPhaseOrder` | Phase enum ordering |
-| `CoreEconomyBridge` | Sync ops holdings ↔ Core BM state |
+| `CoreEconomyBridge` | Translate delivery events into Core position transactions |
 | `DefaultConsequenceEngine` | Post-command side effects |
 | `LegalEntity` / `LegalEntityKind` | Ops party records |
 | `CohortBudgetResetMode` | When cohort budgets refresh |

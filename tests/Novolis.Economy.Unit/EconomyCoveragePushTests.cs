@@ -6,7 +6,7 @@ using Novolis.Economy.Core.Steps;
 using Novolis.Economy.Simulation;
 using Novolis.Economy.Population;
 using Novolis.Economy.Finance;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 

@@ -81,7 +81,9 @@ public sealed record PeriodFlowInsight(
     Money TaxCollected,
     Money TransfersPaid,
     Money ProductionOutputValue,
-    Money WagesAccrued);
+    Money WagesAccrued,
+    IReadOnlyDictionary<EconomicAssetId, decimal>? ProductionOutputQuantity = null,
+    IReadOnlyDictionary<EconomicAssetId, decimal>? ConsumedQuantity = null);
 
 /// <summary>Obligation book by status and kind.</summary>
 public sealed record ObligationBookInsight(

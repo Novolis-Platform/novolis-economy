@@ -52,7 +52,8 @@ public sealed class RetailFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     HubOrderQuotes.CancelOpen(context, FirmId);
-    var rng = new DeterministicRandom(context.Simulation.State.Seed ^ _rngSalt ^ (ulong)FirmId.Value.GetHashCode());
+    var rng = context.Simulation.Entropy.Stream(
+      $"firms/{FirmId.Value:N}/retail/{_rngSalt}");
     var world = context.World;
 
     foreach (var site in _policy.RetailSites.Where(s => s.FacilityId is not null))

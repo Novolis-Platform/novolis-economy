@@ -1,4 +1,5 @@
 using Novolis.Economy.Core.Finance;
+using Novolis.Economy.Core.Holdings;
 
 namespace Novolis.Economy.Core.Extensions;
 
@@ -15,13 +16,18 @@ public static class ProjectedBooksExtensions
     {
         decimal valued = 0m;
         decimal unpriced = 0m;
-        foreach (var h in state.Holdings.Values.Where(x => x.Owner.Equals(owner)))
+        var context = new ValuationContext(
+            state.MonetaryAssetId,
+            state.Period,
+            ValuationMethod.PostedPrice);
+        foreach (var position in PositionLedger.Snapshot(state).Values
+                     .Where(x => x.Owner.Equals(EconomicIdentity.For(owner)))
+                     .Where(x => !x.Asset.Equals(state.MonetaryAssetId)))
         {
-            var key = EconomyState.PriceKey(h.RegionId, h.ResourceId);
-            if (state.PostedPrices.TryGetValue(key, out var price) && price.UnitPrice.Amount > 0m)
-                valued += h.Quantity * price.UnitPrice.Amount;
+            if (Valuation.TryValue(state, position, context, out var value))
+                valued += value.Amount;
             else
-                unpriced += h.Quantity;
+                unpriced += position.Quantity;
         }
 
         return (Money.From(valued), unpriced);
@@ -33,14 +39,14 @@ public static class ProjectedBooksExtensions
         if (!state.Entities.TryGetValue(id, out var entity))
             throw new InvalidOperationException($"Unknown entity {id}.");
 
-        var cash = entity.Cash;
+        var cash = CashLedger.Balance(state, entity.Id);
         var depositsHeld = DepositLedger.TotalFor(state, id);
         var loansRecv = Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Lender.Equals(id) && l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
         var loansPay = Money.From(
-            state.Loans.Values
+            ClaimLedger.LoanView(state)
                 .Where(l => l.Borrower.Equals(id) && l.Status is LoanStatus.Performing or LoanStatus.Delinquent)
                 .Sum(l => l.PrincipalOutstanding.Amount));
         var obRecv = Money.From(
@@ -106,7 +112,8 @@ public static class ProjectedBooksExtensions
             f.TaxCollected,
             f.TransfersPaid,
             f.ObligationsPaid,
-            f.ProductionOutputValue);
+            f.ProductionOutputValue,
+            f.ProductionQuantities);
     }
 
     /// <summary>Sectoral matrix by <see cref="LegalEntityKind"/>.</summary>

@@ -116,6 +116,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
           if (loan is not null)
           {
             world.Loans.Add(loan);
+            CoreClaimBridge.SyncLoan(world, loan);
             context.State.AppendEvent(new LoanOriginated(
               hour, loan.Id, loan.LenderFirmId, loan.BorrowerFirmId,
               originate.Principal, loan.AnnualInterestRate, loan.DueAt));
@@ -138,6 +139,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
               householdLender ? world.CreditHouseholdBudget : null);
             if (paid.Amount > 0m)
             {
+              CoreClaimBridge.SyncLoan(world, loan);
               context.State.AppendEvent(new LoanRepaid(hour, loan.Id, paid, loan.PrincipalRemaining));
             }
           }
@@ -153,6 +155,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
                 assign.Fraction,
                 world.CanIssueShares))
           {
+            CoreOwnershipBridge.SyncIssuer(world, assign.IssuerFirmId);
             context.State.AppendEvent(new OwnershipChanged(
               hour, assign.IssuerFirmId, assign.OwnerFirmId, assign.Fraction));
           }
@@ -169,6 +172,7 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
                 transfer.Fraction,
                 world.CanIssueShares))
           {
+            CoreOwnershipBridge.SyncIssuer(world, transfer.IssuerFirmId);
             var fromFrac = world.OwnershipClaims
               .FirstOrDefault(c =>
                 c.IssuerFirmId.Equals(transfer.IssuerFirmId)
@@ -1429,6 +1433,8 @@ public sealed class SettleFinancePhase : ISimulationPhase
           hour,
           context.State.AppendEvent);
       }
+
+      CoreClaimBridge.SyncLoan(world, loan);
     }
 
     return ValueTask.CompletedTask;

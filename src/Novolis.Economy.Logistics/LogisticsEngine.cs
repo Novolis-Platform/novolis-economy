@@ -696,7 +696,7 @@ public static class LogisticsEngine
     var bytes = firmId.Value.ToByteArray();
     var hour = BitConverter.GetBytes(now.HourIndex);
     Buffer.BlockCopy(hour, 0, bytes, 8, 4);
-    bytes[12] = (byte)productId.Value.GetHashCode();
+    bytes[12] = (byte)StableIdentityHash.Guid(productId.Value);
     bytes[13] = (byte)qty.Value;
     bytes[14] = 0x51;
     bytes[15] = 0x1F;

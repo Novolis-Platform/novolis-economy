@@ -3,7 +3,7 @@ using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Steps;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 using CoreLoan = Novolis.Economy.Core.Loan;

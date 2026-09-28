@@ -38,7 +38,16 @@ public sealed class DeterministicRandom : IEconomyRandom
   public int NextInt(int maxExclusive)
   {
     ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxExclusive);
-    return (int)(NextUInt64() % (ulong)maxExclusive);
+    var bound = (ulong)maxExclusive;
+    var limit = ulong.MaxValue - (ulong.MaxValue % bound);
+    ulong sample;
+    do
+    {
+      sample = NextUInt64();
+    }
+    while (sample >= limit);
+
+    return (int)(sample % bound);
   }
 
   private ulong NextUInt64()

@@ -13,7 +13,7 @@ using Novolis.Economy.Markets;
 using Novolis.Economy.Production;
 using Novolis.Economy.Simulation;
 using Novolis.Economy.Simulation.Phases;
-using CoreMoney = Novolis.Economy.Core.Money;
+using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 using CoreLoan = Novolis.Economy.Core.Loan;

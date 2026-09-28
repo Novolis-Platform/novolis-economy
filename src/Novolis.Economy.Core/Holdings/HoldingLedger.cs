@@ -1,3 +1,6 @@
+using Novolis.Economy.Core.Transactions;
+using Novolis.Economy.Primitives;
+
 namespace Novolis.Economy.Core.Holdings;
 
 /// <summary>Owner × Region × Resource holding ledger (SPEC §8).</summary>
@@ -13,10 +16,11 @@ public static class HoldingLedger
         LegalEntityId owner,
         RegionId region,
         ResourceId resource)
-    {
-        var k = Key(owner, region, resource);
-        return state.Holdings.TryGetValue(k, out var h) ? h.Quantity : 0m;
-    }
+        => PositionLedger.GetQuantity(
+            state,
+            EconomicIdentity.For(owner),
+            region,
+            state.AssetFor(resource));
 
     /// <summary>Upsert a holding; removes the slot when quantity is zero.</summary>
     public static EconomyState Upsert(
@@ -26,13 +30,11 @@ public static class HoldingLedger
         ResourceId resource,
         decimal quantity)
     {
-        var holdings = new Dictionary<string, ResourceHolding>(state.Holdings);
-        var k = Key(owner, region, resource);
-        if (quantity <= 0m)
-            holdings.Remove(k);
-        else
-            holdings[k] = new ResourceHolding(owner, region, resource, quantity);
-        return state with { Holdings = holdings };
+        if (quantity < 0m)
+            throw new ArgumentOutOfRangeException(nameof(quantity));
+
+        var current = GetQuantity(state, owner, region, resource);
+        return PositionLedger.ApplyResource(state, owner, region, resource, quantity - current);
     }
 
     /// <summary>Increase quantity (creates slot if needed).</summary>
@@ -79,7 +81,42 @@ public static class HoldingLedger
         ResourceId resource,
         decimal quantity)
     {
-        state = Debit(state, from, region, resource, quantity);
-        return Credit(state, to, region, resource, quantity);
+        if (quantity < 0m)
+            throw new ArgumentOutOfRangeException(nameof(quantity));
+        if (quantity == 0m)
+            return state;
+
+        var asset = state.AssetFor(resource);
+        var fromOwner = EconomicIdentity.For(from);
+        var toOwner = EconomicIdentity.For(to);
+        var fromQuantity = PositionLedger.GetQuantity(state, fromOwner, region, asset);
+        if (fromQuantity + 1e-12m < quantity)
+            throw new InvalidOperationException(
+                $"Insufficient holding {resource} for {from} in {region}: " +
+                $"have {fromQuantity}, need {quantity}.");
+        var toQuantity = PositionLedger.GetQuantity(state, toOwner, region, asset);
+
+        var next = EconomicTransactionEngine.Apply(
+            state,
+            new EconomicTransaction(
+                TransactionId.From(Guid.Empty),
+                [
+                    new PositionChange(fromOwner, asset, -quantity, region),
+                    new PositionChange(toOwner, asset, quantity, region)
+                ],
+                "ownership-transfer"));
+
+        next = PositionLedger.UpdateLegacyResourceProjection(
+            next,
+            from,
+            region,
+            resource,
+            fromQuantity - quantity);
+        return PositionLedger.UpdateLegacyResourceProjection(
+            next,
+            to,
+            region,
+            resource,
+            toQuantity + quantity);
     }
 }

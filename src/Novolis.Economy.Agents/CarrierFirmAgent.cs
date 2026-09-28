@@ -64,7 +64,8 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     var world = context.World;
-    var rng = new DeterministicRandom(context.Simulation.State.Seed ^ _rngSalt ^ (ulong)FirmId.Value.GetHashCode());
+    var rng = context.Simulation.Entropy.Stream(
+      $"firms/{FirmId.Value:N}/carrier/{_rngSalt}");
 
     var ship = world.Shipments.FirstOrDefault(s =>
       !s.IsLegacy && s.FirmId.Equals(FirmId) && s.Status == ShipmentStatus.InTransit);
