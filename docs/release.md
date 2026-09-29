@@ -10,8 +10,10 @@ Packages publish as `Novolis.Economy.*` on GitHub Packages under the `2026.1.*` 
 ## 2026.1.x — Core pivot (breaking)
 
 - **PackageId `Novolis.Economy` retired** (no shim). Consumers must `PackageReference` **`Novolis.Economy.Core`**.
-- Ops packages depend on Core; former prim types live in Production / Logistics / Accounting / Simulation / Population (see [design.md](design.md) type map).
-- Time: hours advance carriage only; `EconomyEngine.Advance` runs at period boundaries via Simulation.
+- `Novolis.Economy.Primitives` owns universal identities and values;
+  `Novolis.Economy.Abstractions` owns model-neutral contracts.
+- Core is the authority for positions, claims, transactions, and invariants.
+  Simulation owns clocks, model composition, and period execution.
 - Dogfood (`NearSol`, Tramp*, EconomyBoard) and Sins (`Novolis.Economy.Core` only) consume GPR `2026.1.*`.
 
 ## 2026.1.x — Households, regions, labor, comfort

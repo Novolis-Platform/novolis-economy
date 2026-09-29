@@ -1,6 +1,5 @@
 using Novolis.Economy;
 using Novolis.Economy.Markets;
-using Novolis.Economy.Simulation;
 
 namespace Novolis.Economy.Agents;
 

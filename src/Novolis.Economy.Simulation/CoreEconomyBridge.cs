@@ -1,5 +1,4 @@
 using Novolis.Economy.Core;
-using Novolis.Economy.Core.Steps;
 using Novolis.Economy.Logistics;
 
 namespace Novolis.Economy.Simulation;
@@ -12,8 +11,6 @@ namespace Novolis.Economy.Simulation;
 /// </summary>
 public static class CoreEconomyBridge
 {
-  private static readonly EconomyEngine PeriodEngine = DefaultPeriodPipeline.CreateEngine();
-
   /// <summary>Maps a hub to a Core region (default: same Guid as hub id).</summary>
   public static RegionId RegionForHub(EconomyWorld world, TransportHubId hubId)
   {
@@ -46,10 +43,5 @@ public static class CoreEconomyBridge
     }
   }
 
-  /// <summary>Run Core's 16-step period pipeline once.</summary>
-  public static void AdvancePeriod(EconomyWorld world)
-  {
-    world.CoreState = PeriodEngine.Advance(world.CoreState);
-  }
 }
 

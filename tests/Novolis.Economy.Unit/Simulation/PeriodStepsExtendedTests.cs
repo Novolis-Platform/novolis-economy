@@ -2,7 +2,7 @@ using Novolis.Economy.Core;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
 using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
@@ -10,7 +10,7 @@ using CoreLoan = Novolis.Economy.Core.Loan;
 using CoreLoanId = Novolis.Economy.Core.LoanId;
 using CoreLoanStatus = Novolis.Economy.Core.LoanStatus;
 
-namespace Novolis.Economy.Unit;
+namespace Novolis.Economy.Unit.Simulation;
 
 public sealed class PeriodStepsExtendedTests
 {

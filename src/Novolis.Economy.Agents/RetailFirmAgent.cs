@@ -32,14 +32,12 @@ public sealed record RetailFirmAgentPolicy(
 public sealed class RetailFirmAgent : IEconomicAgent
 {
   private readonly RetailFirmAgentPolicy _policy;
-  private readonly ulong _rngSalt;
 
   /// <summary>Creates the agent.</summary>
   public RetailFirmAgent(FirmId firmId, RetailFirmAgentPolicy policy, ulong rngSalt = 0x524554UL)
   {
     FirmId = firmId;
     _policy = policy;
-    _rngSalt = rngSalt;
   }
 
   /// <inheritdoc />
@@ -52,8 +50,7 @@ public sealed class RetailFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     HubOrderQuotes.CancelOpen(context, FirmId);
-    var rng = context.Simulation.Entropy.Stream(
-      $"firms/{FirmId.Value:N}/retail/{_rngSalt}");
+    var rng = context.Rng;
     var world = context.World;
 
     foreach (var site in _policy.RetailSites.Where(s => s.FacilityId is not null))

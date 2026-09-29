@@ -2,7 +2,7 @@ using Novolis.Economy;
 using Novolis.Economy.Agents;
 using Novolis.Economy.Core;
 using Novolis.Economy.Core.Extensions;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Simulation;
 using Novolis.Economy.Population;
 using Novolis.Economy.Finance;

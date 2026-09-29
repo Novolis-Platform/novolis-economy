@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Novolis.Economy.Core;
 
 namespace Novolis.Economy.Simulation;
 
@@ -13,7 +12,11 @@ public sealed record SimulationRunManifest(
   int PeriodHours,
   string LibraryVersion,
   string SpecificationHash,
-  string ScenarioHash)
+  string ScenarioHash,
+  string ModelId = "LegacyOperational",
+  string ModelDescriptorHash = "",
+  IReadOnlyList<string>? RuleIdentities = null,
+  IReadOnlyList<string>? AgentProfileIds = null)
 {
   /// <summary>Stable hash of the serialized behavioral specification.</summary>
   public static string HashSpecification(EconomyModelSpecification specification)
@@ -25,16 +28,43 @@ public sealed record SimulationRunManifest(
   }
 
   /// <summary>
+  /// Stable hash of the complete model selection, including rules, actors,
+  /// and model-specific scenario inputs.
+  /// </summary>
+  public static string HashModelDefinition(SimulationModelDefinition model)
+  {
+    ArgumentNullException.ThrowIfNull(model);
+    var payload = new
+    {
+      model.Identity.Id,
+      model.Identity.Version,
+      Rules = model.RuleIdentities,
+      Agents = model.AgentProfileIds,
+      model.Specification,
+      Descriptor = model.ReproducibilityDescriptor
+    };
+    var json = JsonSerializer.Serialize(payload);
+    return Convert.ToHexString(
+      SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+  }
+
+  /// <summary>
   /// Stable identity for the initial scenario, including its declared model
   /// specification and seed.
   /// </summary>
   public static string HashScenario(
     ulong seed,
     ulong initialStateFingerprint,
-    string specificationHash)
+    string specificationHash,
+    string modelId = "LegacyOperational",
+    string modelVersion = "legacy",
+    string modelDescriptorHash = "")
   {
     ArgumentException.ThrowIfNullOrEmpty(specificationHash);
-    var material = $"{seed:X16}|{initialStateFingerprint:X16}|{specificationHash}";
+    ArgumentException.ThrowIfNullOrEmpty(modelId);
+    ArgumentException.ThrowIfNullOrEmpty(modelVersion);
+    var material =
+      $"{modelId}|{modelVersion}|{seed:X16}|{initialStateFingerprint:X16}|{specificationHash}|{modelDescriptorHash}";
     return Convert.ToHexString(
       SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
   }

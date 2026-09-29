@@ -3,7 +3,7 @@ using Novolis.Economy.Core.Extensions;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Core.Transport;
 using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
@@ -27,7 +27,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Period_Advances_Monotonically_Over_Horizon()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = EconomyState.Empty;
         for (var i = 1; i <= 12; i++)
         {
@@ -40,7 +40,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Sfc_Cash_Conserves_Across_Many_Periods_Without_Bank_Money()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = OverTimeFixtures.ClosedFiscalNoTransfer();
         var cash0 = state.TotalCash().Amount;
         var deposits0 = state.TotalDeposits().Amount;
@@ -59,7 +59,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Transfer_Arrives_After_Travel_Periods()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = OverTimeFixtures.SlowLane(travelPeriods: 3);
         state = TransferEngine.StartTransfer(
             state,
@@ -101,7 +101,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Delinquent_Obligation_Defaults_After_Aging()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         // Due at period 1; firm cannot pay
         var state = OverTimeFixtures.UnpayableWageDueAt(duePeriod: 1);
 
@@ -123,8 +123,8 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Production_Accumulates_Output_Over_Periods()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
-        var state = OverTimeFixtures.SteadyProduction();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
+        var state = new BoundedPeriodState(OverTimeFixtures.SteadyProduction());
         var widgets = new List<decimal>();
 
         for (var i = 0; i < 5; i++)
@@ -154,7 +154,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Bank_Interest_Drains_Borrower_Deposit_Over_Periods_Conserving_Deposits()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = OverTimeFixtures.BankLoanWithInterest();
         var loanId = state.Loans.Keys.Single();
         var deposits0 = state.TotalDeposits().Amount;
@@ -185,7 +185,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Fiscal_Transfer_Each_Period_Until_State_Cash_Exhausted()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         // State has 25 cash; transfer 10/period → three successful transfers then stall
         var state = OverTimeFixtures.FiscalTransfer(stateCash: 25m, transferPerHh: 10m);
         var cash0 = state.TotalCash().Amount;
@@ -213,7 +213,7 @@ public sealed class EconomyCoreOverTimeTests
     [Test]
     public async Task Illiquid_But_Solvent_Persists_Until_Obligation_Defaults()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         // Period already 1 so the wage is due-now before settlement
         var state = OverTimeFixtures.MinskyHorizon() with { Period = 1 };
 

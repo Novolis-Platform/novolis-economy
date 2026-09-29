@@ -2,11 +2,12 @@
   <PropertyGroup>
     <PackageId>Novolis.Economy.Accounting</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>Double-entry ledgers, invoices, period close, and ownership engine.</Description>
+    <Description>Read-only financial projections and diagnostics over Core economic state, with compatibility ledger adapters.</Description>
     <RootNamespace>Novolis.Economy.Accounting</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy.Abstractions\Novolis.Economy.Abstractions.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Primitives\Novolis.Economy.Primitives.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
     <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />

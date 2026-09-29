@@ -7,7 +7,7 @@ using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Production;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Core.Transport;
 using Novolis.Economy.Markets;
 using Novolis.Economy.Production;
@@ -86,8 +86,9 @@ public sealed class EconomyCoreCoverageBoostTests
             CohortId.New(), RegionA, 2,
             new HouseholdProfile(0m, 0m, 1m, 0m),
             HouseholdLaborKind.Common, CoreMoney.Zero, HouseholdEntityId: null);
-        var state = EconomyState.Empty with
-        {
+        var state = new BoundedPeriodState(
+          EconomyState.Empty with
+          {
             Entities = new Dictionary<LegalEntityId, CoreEntity>
             {
                 [State] = new CoreEntity(State, CoreEntityKind.State, CoreMoney.From(100m)),
@@ -95,7 +96,7 @@ public sealed class EconomyCoreCoverageBoostTests
             Regions = new Dictionary<RegionId, Region> { [RegionA] = new Region(RegionA, 10, 10m, 10m) },
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Policy = StatePolicy.Neutral with { TransferPerHousehold = CoreMoney.From(5m) },
-        };
+          });
 
         var next = new ApplyPolicyStep().Execute(state);
         await Assert.That(next.Cohorts[cohort.Id].CashPerHousehold.Amount).IsEqualTo(5m);
@@ -109,8 +110,9 @@ public sealed class EconomyCoreCoverageBoostTests
             CohortId.New(), RegionA, 10,
             new HouseholdProfile(0m, 0m, 1m, 0m),
             HouseholdLaborKind.Common, CoreMoney.Zero, HouseholdEntityId: null);
-        var state = EconomyState.Empty with
-        {
+        var state = new BoundedPeriodState(
+          EconomyState.Empty with
+          {
             Entities = new Dictionary<LegalEntityId, CoreEntity>
             {
                 [State] = new CoreEntity(State, CoreEntityKind.State, CoreMoney.From(3m)),
@@ -118,7 +120,7 @@ public sealed class EconomyCoreCoverageBoostTests
             Regions = new Dictionary<RegionId, Region> { [RegionA] = new Region(RegionA, 20, 10m, 10m) },
             Cohorts = new Dictionary<CohortId, HouseholdCohort> { [cohort.Id] = cohort },
             Policy = StatePolicy.Neutral with { TransferPerHousehold = CoreMoney.From(5m) },
-        };
+          });
 
         var next = new ApplyPolicyStep().Execute(state);
         await Assert.That(next.Entities[State].Cash.Amount).IsEqualTo(3m);
@@ -748,8 +750,9 @@ public sealed class EconomyCoreCoverageBoostTests
             activityId, Firm, RegionA,
             new ActivityRecipe([], [], LaborHoursPerRun: 0m, ProductionSpacePerRun: 1m), 1m);
         var loanId = CoreLoanId.New();
-        var state = EconomyState.Empty with
-        {
+        var state = new BoundedPeriodState(
+          EconomyState.Empty with
+          {
             Period = 1,
             Entities = new Dictionary<LegalEntityId, CoreEntity>
             {
@@ -759,14 +762,6 @@ public sealed class EconomyCoreCoverageBoostTests
             },
             Regions = new Dictionary<RegionId, Region> { [RegionA] = new Region(RegionA, 10, 10m, 10m) },
             Activities = new Dictionary<ActivityId, Activity> { [activityId] = zeroLabor },
-            Scratch = PeriodScratch.Empty with
-            {
-                ActualRuns = new Dictionary<ActivityId, decimal>
-                {
-                    [ghostActivity] = 1m,
-                    [activityId] = 1m,
-                },
-            },
             Loans = new Dictionary<CoreLoanId, CoreLoan>
             {
                 [loanId] = new CoreLoan(
@@ -782,7 +777,15 @@ public sealed class EconomyCoreCoverageBoostTests
                 new LossEvent(Firm, RiskKind.TransportLoss, CoreMoney.From(5m)),
             ],
             Policy = StatePolicy.Neutral,
-        };
+          },
+          BoundedPeriodScratch.Empty with
+          {
+            ActualRuns = new Dictionary<ActivityId, decimal>
+            {
+              [ghostActivity] = 1m,
+              [activityId] = 1m,
+            },
+          });
 
         var next = new CreateObligationsStep().Execute(state);
         await Assert.That(next.Obligations.Any(o => o.Kind == ObligationKind.Wage)).IsFalse();

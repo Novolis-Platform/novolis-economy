@@ -29,14 +29,12 @@ public sealed record ManufacturingFirmAgentPolicy(
 public sealed class ManufacturingFirmAgent : IEconomicAgent
 {
   private readonly ManufacturingFirmAgentPolicy _policy;
-  private readonly ulong _rngSalt;
 
   /// <summary>Creates the agent.</summary>
   public ManufacturingFirmAgent(FirmId firmId, ManufacturingFirmAgentPolicy policy, ulong rngSalt = 0x4D4647UL)
   {
     FirmId = firmId;
     _policy = policy;
-    _rngSalt = rngSalt;
   }
 
   /// <inheritdoc />
@@ -49,8 +47,7 @@ public sealed class ManufacturingFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     HubOrderQuotes.CancelOpen(context, FirmId);
-    var rng = context.Simulation.Entropy.Stream(
-      $"firms/{FirmId.Value:N}/manufacturing/{_rngSalt}");
+    var rng = context.Rng;
     foreach (var site in _policy.Sites.Where(s => s.FacilityId is not null))
     {
       var loc = site.LocationId;

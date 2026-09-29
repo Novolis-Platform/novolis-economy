@@ -7,8 +7,8 @@
     <!-- Document surface in README/SPEC; enum/member XML can land incrementally. -->
     <NoWarn>$(NoWarn);CS1591;CS1587</NoWarn>
     <Description>
-      Bounded-minimum economic kernel: immutable EconomyState, authoritative positions and claims,
-      invariant-preserving transactions, valuation, and ordered period transitions.
+      Bounded-minimum economic authority: immutable EconomyState, authoritative positions and claims,
+      invariant-preserving transactions, valuation, and atomic state transitions.
     </Description>
   </PropertyGroup>
   <ItemGroup>

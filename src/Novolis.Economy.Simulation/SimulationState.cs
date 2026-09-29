@@ -8,6 +8,7 @@ public sealed class SimulationState
 {
   private readonly List<IEconomyCommand> _pendingCommands = [];
   private readonly List<IEconomyEvent> _events = [];
+  private readonly List<AgentDecisionTrace> _agentDecisionTraces = [];
   private readonly List<SimulationPhaseOrder> _lastTickPhases = [];
   private ulong _lastRngState;
   private ulong _cachedWorldFingerprint;
@@ -22,17 +23,27 @@ public sealed class SimulationState
   }
 
   /// <summary>Creates state at epoch with the given seed and world.</summary>
-  public SimulationState(ulong seed, EconomyWorld world)
+  public SimulationState(
+    ulong seed,
+    EconomyWorld world,
+    SimulationModelIdentity? modelIdentity = null,
+    SimulationModelDefinition? modelDefinition = null)
   {
     ArgumentNullException.ThrowIfNull(world);
     Seed = seed;
     World = world;
+    ModelIdentity = modelIdentity
+      ?? modelDefinition?.Identity
+      ?? SimulationModelIdentity.Legacy(world.Specification);
     World.CoreState = World.CoreState with { SimulationSeed = seed };
     Entropy = new SimulationEntropy(seed);
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
     _cachedWorldFingerprint = world.Fingerprint();
     var specificationHash = SimulationRunManifest.HashSpecification(world.Specification);
+    var modelDescriptorHash = modelDefinition is null
+      ? string.Empty
+      : SimulationRunManifest.HashModelDefinition(modelDefinition);
     Manifest = new SimulationRunManifest(
       world.Specification.Version,
       seed,
@@ -43,12 +54,22 @@ public sealed class SimulationState
       SimulationRunManifest.HashScenario(
         seed,
         _cachedWorldFingerprint,
-        specificationHash));
+        specificationHash,
+        ModelIdentity.Id,
+        ModelIdentity.Version,
+        modelDescriptorHash),
+      ModelIdentity.Id,
+      modelDescriptorHash,
+      modelDefinition?.RuleIdentities,
+      modelDefinition?.AgentProfileIds);
     RecomputeHash();
   }
 
   /// <summary>Initial RNG seed.</summary>
   public ulong Seed { get; }
+
+  /// <summary>Complete model selected for this run.</summary>
+  public SimulationModelIdentity ModelIdentity { get; }
 
   /// <summary>Named deterministic entropy streams for this run.</summary>
   public SimulationEntropy Entropy { get; }
@@ -67,6 +88,18 @@ public sealed class SimulationState
 
   /// <summary>Diagnostic and domain events accumulated so far.</summary>
   public IReadOnlyList<IEconomyEvent> Events => _events;
+
+  /// <summary>Deterministic actor decisions emitted during this run.</summary>
+  public IReadOnlyList<AgentDecisionTrace> AgentDecisionTraces =>
+    _agentDecisionTraces;
+
+  /// <summary>Records one actor decision without mutating economic authority.</summary>
+  public void AppendAgentDecision(AgentDecisionTrace trace)
+  {
+    ArgumentNullException.ThrowIfNull(trace);
+    _agentDecisionTraces.Add(trace);
+    _hashDirty = true;
+  }
 
   /// <summary>Phases that ran during the most recent tick (for tests).</summary>
   public IReadOnlyList<SimulationPhaseOrder> LastTickPhases => _lastTickPhases;

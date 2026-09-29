@@ -79,6 +79,33 @@ public sealed class EconomyWorldBuilder
     return this;
   }
 
+  /// <summary>Registers an explicit external-sector counterparty.</summary>
+  public EconomyWorldBuilder AddExternalSector(
+    FirmId firmId,
+    string name,
+    Money openingCash)
+  {
+    var ledger = _world.EnsureFirm(firmId, name);
+    _world.EnsureExternalSector(firmId, name);
+    _world.MonetaryClosure = MonetaryClosure.ExternalSector;
+    if (openingCash.Amount > 0m)
+      ledger.SeedCash(openingCash, SimulationDate.Epoch);
+    return this;
+  }
+
+  /// <summary>Registers a deposit-taking bank.</summary>
+  public EconomyWorldBuilder AddBank(
+    FirmId firmId,
+    string name,
+    Money openingCash)
+  {
+    var ledger = _world.EnsureFirm(firmId, name);
+    _world.EnsureBank(firmId, name);
+    if (openingCash.Amount > 0m)
+      ledger.SeedCash(openingCash, SimulationDate.Epoch);
+    return this;
+  }
+
   /// <summary>Registers a habitat/region with living and production caps.</summary>
   public EconomyWorldBuilder AddRegion(
     GeographicAreaId areaId,
@@ -243,6 +270,28 @@ public sealed class EconomyWorldBuilder
   public EconomyWorldBuilder SetLabor(FirmId firmId, decimal hoursPerTick)
   {
     _world.AvailableLaborHours[firmId] = hoursPerTick;
+    return this;
+  }
+
+  /// <summary>Sets an hourly production plan for a facility.</summary>
+  public EconomyWorldBuilder SetProductionPlan(
+    FirmId firmId,
+    FacilityId facilityId,
+    ProductId productId,
+    Quantity ratePerHour)
+  {
+    _world.ProductionPlans[(firmId, facilityId, productId)] = ratePerHour;
+    return this;
+  }
+
+  /// <summary>Sets a posted retail price for a facility product.</summary>
+  public EconomyWorldBuilder SetRetailPrice(
+    FirmId firmId,
+    FacilityId facilityId,
+    ProductId productId,
+    Money price)
+  {
+    _world.RetailPrices[(firmId, facilityId, productId)] = price;
     return this;
   }
 

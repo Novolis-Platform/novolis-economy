@@ -1,3 +1,5 @@
+using Novolis.Economy.Core.Transactions;
+
 namespace Novolis.Economy.Core;
 
 /// <summary>Aggregate state of one Core economy (SPEC §21).</summary>
@@ -22,13 +24,12 @@ public sealed record EconomyState(
     IReadOnlyDictionary<string, PostedPrice> PostedPrices,
     IReadOnlyList<LossEvent> PendingLosses,
     PeriodFlowLedger Flows,
-    PeriodScratch Scratch,
     IReadOnlyDictionary<string, EconomicPosition>? Positions = null,
     EconomicAssetId? UnitOfAccountAssetId = null,
     IReadOnlyDictionary<ClaimId, FinancialClaim>? Claims = null,
     ulong SimulationSeed = 0,
     long TransitionSequence = 0,
-    EconomyModelSpecification? ModelSpecification = null)
+    IReadOnlyList<EconomicTransaction>? TransactionJournal = null)
 {
     /// <summary>Empty economy at period 0.</summary>
     public static EconomyState Empty { get; } = new(
@@ -52,17 +53,12 @@ public sealed record EconomyState(
         PostedPrices: new Dictionary<string, PostedPrice>(),
         PendingLosses: Array.Empty<LossEvent>(),
         Flows: PeriodFlowLedger.Empty,
-        Scratch: PeriodScratch.Empty,
         Positions: new Dictionary<string, EconomicPosition>(),
         UnitOfAccountAssetId: DefaultUnitOfAccountAssetId,
         Claims: new Dictionary<ClaimId, FinancialClaim>(),
         SimulationSeed: 0,
         TransitionSequence: 0,
-        ModelSpecification: EconomyModelSpecification.Default);
-
-    /// <summary>Behavioral assumptions declared for this Core state.</summary>
-    public EconomyModelSpecification Specification =>
-        ModelSpecification ?? EconomyModelSpecification.Default;
+        TransactionJournal: Array.Empty<EconomicTransaction>());
 
     /// <summary>
     /// Authoritative financial claims. The legacy <see cref="Loans"/> dictionary
@@ -70,6 +66,13 @@ public sealed record EconomyState(
     /// </summary>
     public IReadOnlyDictionary<ClaimId, FinancialClaim> ClaimState =>
         Claims ?? new Dictionary<ClaimId, FinancialClaim>();
+
+    /// <summary>
+    /// Append-only transaction history for diagnostics and read-side
+    /// projections. It does not participate in economic authority.
+    /// </summary>
+    public IReadOnlyList<EconomicTransaction> Journal =>
+        TransactionJournal ?? Array.Empty<EconomicTransaction>();
 
     /// <summary>
     /// Stable compatibility unit of account for scenarios that have not

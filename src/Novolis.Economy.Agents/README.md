@@ -8,9 +8,13 @@
 
 # Novolis.Economy.Agents
 
-**Heuristic economic agents** — firms that observe `EconomyWorld`, apply deterministic policies, and enqueue `IEconomyCommand` values. Not LLMs or ML.
+**Rules-based economic actors** — policies that observe a read-only world view
+and return or enqueue bounded command values. They may use deterministic
+named randomness and bounded fuzzing; they are not LLMs or ML.
 
-Agents run **before** each simulation hour: `AgentScheduler.TickAll` then `await sim.AdvanceAsync(...)`. Settlement (production, finance, logistics) happens inside Simulation phases.
+Simulation schedules agents **before** each simulation hour. Settlement
+(production, finance, logistics) happens inside Simulation phases and Core
+commits the resulting economic transitions.
 
 ## Install
 
@@ -18,7 +22,9 @@ Agents run **before** each simulation hour: `AgentScheduler.TickAll` then `await
 dotnet add package Novolis.Economy.Agents
 ```
 
-Depends on `Novolis.Economy.Simulation`, `Novolis.Economy.Production`, and `Novolis.Economy.Markets`.
+The assembly does not reference `Novolis.Economy.Simulation`. It depends on
+the model-neutral `Novolis.Economy.Abstractions` boundary and the domain
+packages whose commands and observations its actor policies use.
 
 ## Quick start
 
@@ -35,7 +41,11 @@ var agents = new IEconomicAgent[]
 };
 
 var rng = new DeterministicRandom(sim.State.Seed);
-var ctx = new AgentContext(sim, rng);
+var ctx = new AgentContext(
+  sim.State.World,
+  sim.State.Clock,
+  rng,
+  sim.Enqueue);
 AgentScheduler.TickAll(agents, ctx);
 await sim.AdvanceAsync(SimulationDuration.FromHours(1));
 ```
@@ -46,8 +56,8 @@ Each agent exposes `LastDecision` for dashboards. `HubOrderQuotes.CancelOpen` cl
 
 | Type | Role |
 |------|------|
-| `IEconomicAgent` | `FirmId`, `LastDecision`, `Tick(AgentContext)` |
-| `AgentContext` | Simulation handle, world, clock, RNG, `Enqueue` |
+| `IEconomicAgent` | Actor identity, status, and `Tick(AgentContext)` |
+| `AgentContext` | Read-only world, clock, RNG, and command sink |
 | `AgentScheduler` | `TickAll(agents, context)` |
 | `AgentSite` | Inventory location + optional facility / hub binding |
 | `HubOrderQuotes` | Cancel open hub orders for a firm |
@@ -67,7 +77,8 @@ Used by [`novolis-dogfooding`](https://github.com/Novolis-Platform/novolis-dogfo
 
 | Package | Role |
 |---------|------|
-| `Novolis.Economy.Simulation` | Tick runner, command queue, world state |
+| `Novolis.Economy.Abstractions` | Rule, actor, and deterministic-random contracts |
+| `Novolis.Economy.Simulation` | Schedules actors and applies their commands |
 | `Novolis.Economy.Production` | Recipes, inventory, hub orders, loan commands |
 | `Novolis.Economy.Markets` | Observed tape, pricing helpers |
 | `Novolis.Economy.Finance` | Loan settlement engine |

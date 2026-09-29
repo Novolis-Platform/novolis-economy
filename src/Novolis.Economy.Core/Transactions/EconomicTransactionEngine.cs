@@ -48,7 +48,10 @@ public static class EconomicTransactionEngine
         next = CashLedger.ProjectEntityCash(next, monetaryOwners);
         return next with
         {
-            TransitionSequence = checked(next.TransitionSequence + 1)
+            TransitionSequence = checked(next.TransitionSequence + 1),
+            TransactionJournal = next.Journal
+                .Append(effectiveTransaction)
+                .ToList()
         };
     }
 

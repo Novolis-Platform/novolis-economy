@@ -1,4 +1,5 @@
 using Novolis.Economy;
+using Novolis.Economy.Abstractions;
 
 namespace Novolis.Economy.Finance;
 
@@ -86,11 +87,12 @@ public static class LoanEngine
   /// <summary>
   /// Disburses a new loan when the lender has cash. Returns null on failure.
   /// </summary>
-  public static Loan? TryOriginate(
-    IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
+  public static Loan? TryOriginate<TLedger>(
+    IDictionary<FirmId, TLedger> ledgers,
     OriginateLoan cmd,
     SimulationHour hour,
     Func<LoanId> nextId)
+    where TLedger : ILoanLedger<SimulationDate>
   {
     if (cmd.Principal.Amount <= 0m
         || cmd.TermHours <= 0
@@ -102,8 +104,7 @@ public static class LoanEngine
       return null;
     }
 
-    Novolis.Economy.Accounting.LedgerEngine.PostLoanDisbursement(
-      lender, borrower, cmd.Principal, hour.Date);
+    lender.PostLoanDisbursement(borrower, cmd.Principal, hour.Date);
     var id = nextId();
     return new Loan(
       id,
@@ -118,11 +119,12 @@ public static class LoanEngine
   /// <summary>
   /// Disburses a loan funded from household budget (caller already validated comfort + debit).
   /// </summary>
-  public static Loan? TryOriginateHouseholdLender(
-    IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
+  public static Loan? TryOriginateHouseholdLender<TLedger>(
+    IDictionary<FirmId, TLedger> ledgers,
     OriginateLoan cmd,
     SimulationHour hour,
     Func<LoanId> nextId)
+    where TLedger : ILoanLedger<SimulationDate>
   {
     if (cmd.Principal.Amount <= 0m
         || cmd.TermHours <= 0
@@ -133,8 +135,7 @@ public static class LoanEngine
       return null;
     }
 
-    Novolis.Economy.Accounting.LedgerEngine.PostHouseholdLoanDisbursement(
-      lender, borrower, cmd.Principal, hour.Date);
+    lender.PostHouseholdLoanDisbursement(borrower, cmd.Principal, hour.Date);
     var id = nextId();
     return new Loan(
       id,
@@ -147,10 +148,11 @@ public static class LoanEngine
   }
 
   /// <summary>Capitalizes one hour of interest onto principal / notes.</summary>
-  public static Money AccrueHour(
+  public static Money AccrueHour<TLedger>(
     Loan loan,
-    IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
+    IDictionary<FirmId, TLedger> ledgers,
     SimulationHour hour)
+    where TLedger : ILoanLedger<SimulationDate>
   {
     if (loan.Status != LoanStatus.Active)
     {
@@ -165,20 +167,21 @@ public static class LoanEngine
       return Money.Zero;
     }
 
-    Novolis.Economy.Accounting.LedgerEngine.PostInterestAccrual(lender, borrower, interest, hour.Date);
+    lender.PostInterestAccrual(borrower, interest, hour.Date);
     loan.PrincipalRemaining = Money.From(loan.PrincipalRemaining.Amount + interest.Amount);
     loan.AccruedInterest = Money.From(loan.AccruedInterest.Amount + interest.Amount);
     return interest;
   }
 
   /// <summary>Applies cash repayment up to <paramref name="amount"/> (or borrower cash).</summary>
-  public static Money TryRepay(
+  public static Money TryRepay<TLedger>(
     Loan loan,
-    IDictionary<FirmId, Novolis.Economy.Accounting.FirmLedger> ledgers,
+    IDictionary<FirmId, TLedger> ledgers,
     Money amount,
     SimulationHour hour,
     bool lenderIsHousehold = false,
     Action<FirmId, Money>? creditHouseholdBudget = null)
+    where TLedger : ILoanLedger<SimulationDate>
   {
     if (loan.Status is not LoanStatus.Active and not LoanStatus.Defaulted
         || amount.Amount <= 0m
@@ -197,13 +200,12 @@ public static class LoanEngine
     var money = Money.From(pay);
     if (lenderIsHousehold)
     {
-      Novolis.Economy.Accounting.LedgerEngine.PostHouseholdLoanRepayment(
-        lender, borrower, money, hour.Date);
+      lender.PostHouseholdLoanRepayment(borrower, money, hour.Date);
       creditHouseholdBudget?.Invoke(loan.LenderFirmId, money);
     }
     else
     {
-      Novolis.Economy.Accounting.LedgerEngine.PostLoanRepayment(lender, borrower, money, hour.Date);
+      lender.PostLoanRepayment(borrower, money, hour.Date);
     }
 
     loan.PrincipalRemaining = Money.From(loan.PrincipalRemaining.Amount - pay);

@@ -8,13 +8,16 @@
 
 # Novolis.Economy.Simulation
 
-Deterministic economic **tick runner**: `EconomyWorld`, ordered phases, command queue, events, and world fingerprint hash.
+Composition and execution layer for economic models: `EconomyWorld`, clocks,
+ordered phases, model profiles, agents, run manifests, metrics, and stable
+fingerprints.
 
 Holds operational collections for orchestration; `OwnershipClaim` and
 `FirmLedger` remain Accounting compatibility/input projections. Economic
-authority is **`Novolis.Economy.Core`** (`EconomyWorld.CoreState`), including
-positions, cash positions, claims, and Core share holdings; period close calls
-`EconomyEngine.Advance`.
+authority is **`Novolis.Economy.Core`** (`EconomyWorld.CoreState`),
+including positions, cash positions, claims, and Core share holdings. This
+layer selects and runs the period engine; Core never owns the clock or phase
+ordering.
 
 `EconomicRegion` + `AddRegion` / household `AddCohort` living clamp; region labor pools; production slots for mfg/assembly only.
 
@@ -42,7 +45,9 @@ using Novolis.Economy.Simulation.Extensions;
 var world = new EconomyWorldBuilder()
   .AddRegion(areaId, livingCapacityHouseholds: 10_000, productionSlots: 50)
   .Build();
-var sim = new EconomySimulation(seed: 42, world);
+var sim = EconomySimulation.FromModel(
+  seed: 42,
+  new Models.SmallOpenRegionalTradeModel());
 
 sim.Enqueue(new SetProductionPlan(firmId, facilityId, productId, Quantity.From(50m)));
 await sim.AdvanceAsync(SimulationDuration.FromHours(24));
@@ -58,13 +63,19 @@ Custom phase order (tests): `new EconomySimulation(seed, world, PhasePipeline.Cr
 |------|------|
 | `EconomySimulation` | Command queue, `AdvanceAsync`, throughput mode |
 | `IEconomySimulation` | Simulation contract |
+| `SimulationModelDefinition` | Complete model composition surface |
+| `SmallOpenRegionalTradeModel` | Documented flagship open regional model |
+| `DeterministicBoundedModel` | Finite, replayable secondary profile |
+| `SimulationRun` / `SimulationRunRequest` | Model-owned run execution and results |
+| `SimulationRunManifest` | Reproducibility identity and selected rules |
+| `SimulationMetrics` / `SimulationSweep` | Run observations and parameter sweeps |
 | `EconomyWorld` | Firms, regions, inventory, ledgers, loans, hub book |
 | `EconomyWorldBuilder` | Fluent world setup (`AddRegion`, `AddFirm`, `AddProduct`, …) |
 | `EconomyWorldExtensions` | `ToReportSnapshot()` |
 | `PhasePipeline` / `DefaultPhases` | Ordered hourly + period-close phases |
 | `ISimulationPhase` | Single phase hook |
 | `SimulationPhaseOrder` | Phase enum ordering |
-| `CoreEconomyBridge` | Bind hub regions and advance the Core period pipeline |
+| `CoreEconomyBridge` | Bind hub regions; period execution stays in the selected model |
 | `CoreInventoryBridge` / `CoreCashBridge` | Reconcile operational detail into Core authority |
 | `DefaultConsequenceEngine` | Post-command side effects |
 | `LegalEntity` / `LegalEntityKind` | Ops party records |

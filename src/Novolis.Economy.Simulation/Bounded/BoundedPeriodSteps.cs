@@ -1,3 +1,4 @@
+using Novolis.Economy.Core;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
@@ -5,22 +6,25 @@ using Novolis.Economy.Core.Labor;
 using Novolis.Economy.Core.Production;
 using Novolis.Economy.Core.Transport;
 using Novolis.Economy.Core.Transactions;
+using CoreLegalEntityKind = Novolis.Economy.Core.LegalEntityKind;
 
-namespace Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
+
+namespace Novolis.Economy.Simulation.Bounded;
 
 /// <summary>1. Apply policies and opening conditions.</summary>
-public sealed class ApplyPolicyStep : IEconomyStep
+public sealed class ApplyPolicyStep : IBoundedPeriodStep
 {
     public string Name => "01_ApplyPolicy";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         // Reset period scratch + flow ledger; advance period counter at start.
         var state = current with
         {
             Period = checked(current.Period + 1),
             Flows = PeriodFlowLedger.Empty,
-            Scratch = PeriodScratch.Empty
+            Scratch = BoundedPeriodScratch.Empty
         };
 
         var policy = state.Policy;
@@ -37,7 +41,7 @@ public sealed class ApplyPolicyStep : IEconomyStep
             return state;
 
         // Find a State entity to act as fiscal counterparty
-        var stateEntity = state.Entities.Values.FirstOrDefault(e => e.Kind == LegalEntityKind.State);
+        var stateEntity = state.Entities.Values.FirstOrDefault(e => e.Kind == CoreLegalEntityKind.State);
         if (stateEntity is null)
             return state;
 
@@ -53,7 +57,8 @@ public sealed class ApplyPolicyStep : IEconomyStep
                 {
                     if (CashLedger.Balance(state, stateEntity.Id).Amount + 1e-12m < total.Amount)
                         break;
-                    state = CashLedger.Transfer(state, stateEntity.Id, hid, total);
+                    state = state.WithEconomy(
+                        CashLedger.Transfer(state, stateEntity.Id, hid, total));
                     state = state.WithFlows(state.Flows.RecordTransfer(total));
                 }
                 else
@@ -61,7 +66,8 @@ public sealed class ApplyPolicyStep : IEconomyStep
                     // Credit cash-per-household when no entity link (still debit State)
                     if (CashLedger.Balance(state, stateEntity.Id).Amount + 1e-12m < total.Amount)
                         break;
-                    state = CashLedger.Debit(state, stateEntity.Id, total);
+                    state = state.WithEconomy(
+                        CashLedger.Debit(state, stateEntity.Id, total));
                     var cohorts = new Dictionary<CohortId, HouseholdCohort>(state.Cohorts)
                     {
                         [cohort.Id] = cohort with
@@ -80,11 +86,11 @@ public sealed class ApplyPolicyStep : IEconomyStep
 }
 
 /// <summary>2. Calculate household labor supply.</summary>
-public sealed class CalculateLaborSupplyStep : IEconomyStep
+public sealed class CalculateLaborSupplyStep : IBoundedPeriodStep
 {
     public string Name => "02_CalculateLaborSupply";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var byRegion = new Dictionary<RegionId, decimal>();
         foreach (var regionId in current.Regions.Keys)
@@ -97,11 +103,11 @@ public sealed class CalculateLaborSupplyStep : IEconomyStep
 }
 
 /// <summary>3. Allocate regional labor to activities (pro-rata by labor demand).</summary>
-public sealed class AllocateLaborStep : IEconomyStep
+public sealed class AllocateLaborStep : IBoundedPeriodStep
 {
     public string Name => "03_AllocateLabor";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var allocation = new Dictionary<ActivityId, decimal>();
         foreach (var regionId in current.Regions.Keys)
@@ -131,11 +137,11 @@ public sealed class AllocateLaborStep : IEconomyStep
 }
 
 /// <summary>4. Determine activity production (min constraints).</summary>
-public sealed class DetermineProductionStep : IEconomyStep
+public sealed class DetermineProductionStep : IBoundedPeriodStep
 {
     public string Name => "04_DetermineProduction";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var runs = new Dictionary<ActivityId, decimal>();
         var committed = new Dictionary<RegionId, decimal>();
@@ -166,18 +172,19 @@ public sealed class DetermineProductionStep : IEconomyStep
 }
 
 /// <summary>5. Add produced resources to owner holdings.</summary>
-public sealed class ApplyProductionStep : IEconomyStep
+public sealed class ApplyProductionStep : IBoundedPeriodStep
 {
     public string Name => "05_ApplyProduction";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
         foreach (var (activityId, runCount) in current.Scratch.ActualRuns)
         {
             if (runCount <= 0m || !current.Activities.TryGetValue(activityId, out var activity))
                 continue;
-            state = ProductionCalculator.ApplyRuns(state, activity, runCount);
+            state = state.WithEconomy(
+                ProductionCalculator.ApplyRuns(state, activity, runCount));
             foreach (var input in activity.Recipe.Inputs)
             {
                 if (input.Quantity <= 0m)
@@ -204,27 +211,27 @@ public sealed class ApplyProductionStep : IEconomyStep
 }
 
 /// <summary>6. Resolve household and firm demand budgets (scratch only).</summary>
-public sealed class ResolveDemandStep : IEconomyStep
+public sealed class ResolveDemandStep : IBoundedPeriodStep
 {
     public string Name => "06_ResolveDemand";
 
-    public EconomyState Execute(EconomyState current) => current;
+    public BoundedPeriodState Execute(BoundedPeriodState current) => current;
 }
 
 /// <summary>7. Match buyers and sellers at posted prices (records intended fills in scratch via holdings scan).</summary>
-public sealed class MatchBuyersSellersStep : IEconomyStep
+public sealed class MatchBuyersSellersStep : IBoundedPeriodStep
 {
     public string Name => "07_MatchBuyersSellers";
 
-    public EconomyState Execute(EconomyState current) => current;
+    public BoundedPeriodState Execute(BoundedPeriodState current) => current;
 }
 
 /// <summary>8. Transfer ownership and payments for matched trades (quantity rationing; no order book).</summary>
-public sealed class TransferOwnershipPaymentsStep : IEconomyStep
+public sealed class TransferOwnershipPaymentsStep : IBoundedPeriodStep
 {
     public string Name => "08_TransferOwnershipPayments";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
         foreach (var cohort in state.Cohorts.Values)
@@ -254,7 +261,7 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                                 h.Quantity > 0m &&
                                 !h.Owner.Equals(buyerId) &&
                                 state.Entities.TryGetValue(h.Owner, out var e) &&
-                                e.Kind == LegalEntityKind.Firm)
+                                e.Kind == CoreLegalEntityKind.Firm)
                     .OrderByDescending(h => h.Quantity)
                     .ToList();
 
@@ -270,9 +277,11 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                     try
                     {
                         var asset = state.AssetFor(price.ResourceId);
-                        state = CashLedger.EnsurePosition(state, buyerId);
-                        state = CashLedger.EnsurePosition(state, holding.Owner);
-                        state = EconomicTransactionEngine.Apply(
+                        state = state.WithEconomy(
+                            CashLedger.EnsurePosition(state, buyerId));
+                        state = state.WithEconomy(
+                            CashLedger.EnsurePosition(state, holding.Owner));
+                        state = state.WithEconomy(EconomicTransactionEngine.Apply(
                             state,
                             EconomicTransaction.Create(
                                 state,
@@ -298,14 +307,14 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                                         cost.Amount,
                                         Region: null)
                                 ],
-                                "posted-price-purchase"));
-                        state = PositionLedger.UpdateLegacyResourceProjection(
+                                "posted-price-purchase")));
+                        state = state.WithEconomy(PositionLedger.UpdateLegacyResourceProjection(
                             state,
                             holding.Owner,
                             cohort.RegionId,
                             price.ResourceId,
-                            holding.Quantity - qty);
-                        state = PositionLedger.UpdateLegacyResourceProjection(
+                            holding.Quantity - qty));
+                        state = state.WithEconomy(PositionLedger.UpdateLegacyResourceProjection(
                             state,
                             buyerId,
                             cohort.RegionId,
@@ -314,7 +323,7 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
                                 state,
                                 EconomicIdentity.For(buyerId),
                                 cohort.RegionId,
-                                asset));
+                                asset)));
                         budget = budget - cost;
                         state = state.WithFlows(state.Flows.RecordCashMoved(cost));
                     }
@@ -331,20 +340,20 @@ public sealed class TransferOwnershipPaymentsStep : IEconomyStep
 }
 
 /// <summary>9. Start pending transfers (already queued) and tick/complete in-flight ones.</summary>
-public sealed class ProcessTransfersStep : IEconomyStep
+public sealed class ProcessTransfersStep : IBoundedPeriodStep
 {
     public string Name => "09_ProcessTransfers";
 
-    public EconomyState Execute(EconomyState current) =>
-        TransferEngine.TickAndComplete(current);
+    public BoundedPeriodState Execute(BoundedPeriodState current) =>
+        current.WithEconomy(TransferEngine.TickAndComplete(current));
 }
 
 /// <summary>10. Create wage, tax, interest, and insurance obligations.</summary>
-public sealed class CreateObligationsStep : IEconomyStep
+public sealed class CreateObligationsStep : IBoundedPeriodStep
 {
     public string Name => "10_CreateObligations";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
         var due = state.Period;
@@ -361,8 +370,8 @@ public sealed class CreateObligationsStep : IEconomyStep
             var creditor = FindHouseholdCreditor(state, activity.RegionId);
             if (creditor is null)
                 continue;
-            state = ObligationEngine.Create(
-                state, activity.Operator, creditor.Value, wage, due, ObligationKind.Wage);
+            state = state.WithEconomy(ObligationEngine.Create(
+                state, activity.Operator, creditor.Value, wage, due, ObligationKind.Wage));
             state = state.WithFlows(state.Flows.RecordWages(wage));
         }
 
@@ -374,8 +383,8 @@ public sealed class CreateObligationsStep : IEconomyStep
             var interest = Money.From(loan.PrincipalOutstanding.Amount * loan.InterestRatePerPeriod);
             if (interest.Amount <= 0m)
                 continue;
-            state = ObligationEngine.Create(
-                state, loan.Borrower, loan.Lender, interest, due, ObligationKind.Interest);
+            state = state.WithEconomy(ObligationEngine.Create(
+                state, loan.Borrower, loan.Lender, interest, due, ObligationKind.Interest));
             // Age remaining periods
             var rem = loan.RemainingPeriods - 1;
             loans[loan.Id] = rem <= 0
@@ -384,7 +393,7 @@ public sealed class CreateObligationsStep : IEconomyStep
         }
 
         state = state with { Loans = loans };
-        state = ClaimLedger.SyncFromLegacyLoans(state);
+        state = state.WithEconomy(ClaimLedger.SyncFromLegacyLoans(state));
 
         // Principal due when term expired
         foreach (var loan in loans.Values.Where(l =>
@@ -392,13 +401,13 @@ public sealed class CreateObligationsStep : IEconomyStep
         {
             if (loan.PrincipalOutstanding.Amount <= 0m)
                 continue;
-            state = ObligationEngine.Create(
+            state = state.WithEconomy(ObligationEngine.Create(
                 state,
                 loan.Borrower,
                 loan.Lender,
                 loan.PrincipalOutstanding,
                 due,
-                ObligationKind.Principal);
+                ObligationKind.Principal));
         }
 
         // Insurance premiums
@@ -406,18 +415,18 @@ public sealed class CreateObligationsStep : IEconomyStep
         {
             if (cover.PremiumPerPeriod.Amount <= 0m)
                 continue;
-            state = ObligationEngine.Create(
+            state = state.WithEconomy(ObligationEngine.Create(
                 state,
                 cover.Insured,
                 cover.Insurer,
                 cover.PremiumPerPeriod,
                 due,
-                ObligationKind.InsurancePremium);
+                ObligationKind.InsurancePremium));
         }
 
         // Taxes: household and firm rates on cash (simple fiscal). A positive
         // model-specification rate overrides the legacy StatePolicy input.
-        var treasury = state.Entities.Values.FirstOrDefault(e => e.Kind == LegalEntityKind.State);
+        var treasury = state.Entities.Values.FirstOrDefault(e => e.Kind == CoreLegalEntityKind.State);
         if (treasury is not null)
         {
             var fiscal = state.Specification.Fiscal;
@@ -431,16 +440,16 @@ public sealed class CreateObligationsStep : IEconomyStep
             {
                 decimal rate = entity.Kind switch
                 {
-                    LegalEntityKind.Household => householdTaxRate,
-                    LegalEntityKind.Firm => firmTaxRate,
+                    CoreLegalEntityKind.Household => householdTaxRate,
+                    CoreLegalEntityKind.Firm => firmTaxRate,
                     _ => 0m
                 };
                 var entityCash = CashLedger.Balance(state, entity.Id);
                 if (rate <= 0m || entityCash.Amount <= 0m)
                     continue;
                 var tax = Money.From(entityCash.Amount * rate);
-                state = ObligationEngine.Create(
-                    state, entity.Id, treasury.Id, tax, due, ObligationKind.Tax);
+                state = state.WithEconomy(ObligationEngine.Create(
+                    state, entity.Id, treasury.Id, tax, due, ObligationKind.Tax));
                 state = state.WithFlows(state.Flows.RecordTax(tax));
             }
         }
@@ -457,12 +466,15 @@ public sealed class CreateObligationsStep : IEconomyStep
                     Math.Max(0m, (loss.GrossLoss.Amount - cover.Deductible.Amount) * cover.CoveredFraction));
                 if (covered.Amount <= 0m)
                     continue;
-                state = ObligationEngine.Create(
-                    state, cover.Insurer, cover.Insured, covered, due, ObligationKind.InsuranceClaim);
+                state = state.WithEconomy(ObligationEngine.Create(
+                    state, cover.Insurer, cover.Insured, covered, due, ObligationKind.InsuranceClaim));
             }
         }
 
-        return state with { PendingLosses = Array.Empty<LossEvent>() };
+        return state with
+        {
+            PendingLosses = Array.Empty<LossEvent>()
+        };
     }
 
     private static LegalEntityId? FindHouseholdCreditor(EconomyState state, RegionId regionId)
@@ -474,20 +486,20 @@ public sealed class CreateObligationsStep : IEconomyStep
 }
 
 /// <summary>11. Settle obligations by liquidity and priority.</summary>
-public sealed class SettleObligationsStep : IEconomyStep
+public sealed class SettleObligationsStep : IBoundedPeriodStep
 {
     public string Name => "11_SettleObligations";
 
-    public EconomyState Execute(EconomyState current) =>
-        ObligationEngine.SettleDue(current);
+    public BoundedPeriodState Execute(BoundedPeriodState current) =>
+        current.WithEconomy(ObligationEngine.SettleDue(current));
 }
 
 /// <summary>12. Draw committed credit where liquidity is short.</summary>
-public sealed class DrawCreditStep : IEconomyStep
+public sealed class DrawCreditStep : IBoundedPeriodStep
 {
     public string Name => "12_DrawCredit";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
         foreach (var facility in current.CreditFacilities.Values.Where(f => f.IsCommitted && f.Available.Amount > 0m))
@@ -500,12 +512,12 @@ public sealed class DrawCreditStep : IEconomyStep
                 continue;
             try
             {
-                state = CreditEngine.DrawFacility(
+                state = state.WithEconomy(CreditEngine.DrawFacility(
                     state,
                     facility.Id,
                     need,
                     interestRatePerPeriod: state.Specification.Credit.FacilityInterestRatePerPeriod,
-                    termPeriods: state.Specification.Credit.FacilityTermPeriods);
+                    termPeriods: state.Specification.Credit.FacilityTermPeriods));
             }
             catch (InvalidOperationException)
             {
@@ -518,11 +530,11 @@ public sealed class DrawCreditStep : IEconomyStep
 }
 
 /// <summary>13. Mark delinquency and default.</summary>
-public sealed class MarkDelinquencyStep : IEconomyStep
+public sealed class MarkDelinquencyStep : IBoundedPeriodStep
 {
     public string Name => "13_MarkDelinquency";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var obligations = current.Obligations.ToList();
         for (var i = 0; i < obligations.Count; i++)
@@ -579,24 +591,24 @@ public sealed class MarkDelinquencyStep : IEconomyStep
                 ClaimLedger.ClaimIdFor(loan.Id));
             if (claim is null || claim.Status == loan.Status)
                 continue;
-            next = ClaimLedger.Upsert(next, claim with { Status = loan.Status });
+            next = next.WithEconomy(ClaimLedger.Upsert(next, claim with { Status = loan.Status }));
         }
 
-        return ClaimLedger.SyncFromLegacyLoans(next);
+        return next.WithEconomy(ClaimLedger.SyncFromLegacyLoans(next));
     }
 }
 
 /// <summary>14. Distribute dividends from firm cash above a retention floor.</summary>
-public sealed class DistributeDividendsStep : IEconomyStep
+public sealed class DistributeDividendsStep : IBoundedPeriodStep
 {
     public string Name => "14_DistributeDividends";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
         var retention = state.Specification.Dividends.RetainedCashFloor;
 
-        foreach (var firm in state.Entities.Values.Where(e => e.Kind == LegalEntityKind.Firm))
+        foreach (var firm in state.Entities.Values.Where(e => e.Kind == CoreLegalEntityKind.Firm))
         {
             var distributable = CashLedger.Balance(state, firm.Id).Amount - retention;
             if (distributable <= 0m)
@@ -612,22 +624,22 @@ public sealed class DistributeDividendsStep : IEconomyStep
                 var share = Money.From(distributable * (h.Units / totalUnits));
                 if (share.Amount <= 0m)
                     continue;
-                state = ObligationEngine.Create(
-                    state, firm.Id, h.Owner, share, state.Period, ObligationKind.Dividend);
+                state = state.WithEconomy(ObligationEngine.Create(
+                    state, firm.Id, h.Owner, share, state.Period, ObligationKind.Dividend));
             }
         }
 
         // Immediately settle dividends created this period
-        return ObligationEngine.SettleDue(state);
+        return state.WithEconomy(ObligationEngine.SettleDue(state));
     }
 }
 
 /// <summary>15. Household consumption of holdings + simple migration toward remaining living capacity.</summary>
-public sealed class HouseholdConsumeMigrateStep : IEconomyStep
+public sealed class HouseholdConsumeMigrateStep : IBoundedPeriodStep
 {
     public string Name => "15_HouseholdConsumeMigrate";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         var state = current;
 
@@ -647,7 +659,8 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
                 var eat = h.Quantity * consumeRate;
                 if (eat <= 0m)
                     continue;
-                state = HoldingLedger.Debit(state, hid, h.RegionId, h.ResourceId, eat);
+                state = state.WithEconomy(HoldingLedger.Debit(
+                    state, hid, h.RegionId, h.ResourceId, eat));
             }
         }
 
@@ -724,11 +737,11 @@ public sealed class HouseholdConsumeMigrateStep : IEconomyStep
 }
 
 /// <summary>16. Reconcile stocks, claims, and ownership.</summary>
-public sealed class ReconcileStep : IEconomyStep
+public sealed class ReconcileStep : IBoundedPeriodStep
 {
     public string Name => "16_Reconcile";
 
-    public EconomyState Execute(EconomyState current)
+    public BoundedPeriodState Execute(BoundedPeriodState current)
     {
         InvariantChecker.AssertAll(current);
         return current;

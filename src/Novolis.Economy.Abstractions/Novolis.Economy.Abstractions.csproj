@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Abstractions</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Model-neutral economic capability contracts and actor boundary records.</Description>
+    <RootNamespace>Novolis.Economy.Abstractions</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy.Primitives\Novolis.Economy.Primitives.csproj" />
+  </ItemGroup>
+</Project>

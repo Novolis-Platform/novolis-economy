@@ -1,5 +1,4 @@
 using Novolis.Economy;
-using Novolis.Economy.Core;
 
 namespace Novolis.Economy.Markets;
 
@@ -22,18 +21,7 @@ public static class TapeAwareGatePricing
       book,
       product,
       floor,
-      EconomyModelSpecification.Default.Pricing with { CeilingMultiple = ceilingMultiple });
-
-  /// <summary>Gate pricing using the complete declared model specification.</summary>
-  public static decimal Gate(
-    ObservedMarketBook book,
-    ProductId product,
-    decimal floor,
-    EconomyModelSpecification specification)
-  {
-    ArgumentNullException.ThrowIfNull(specification);
-    return Gate(book, product, floor, specification.Pricing);
-  }
+      new PricingSpecification(CeilingMultiple: ceilingMultiple));
 
   /// <summary>Gate pricing using declared model parameters.</summary>
   public static decimal Gate(

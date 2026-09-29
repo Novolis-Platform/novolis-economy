@@ -1,8 +1,8 @@
+using Novolis.Economy.Abstractions;
 using Novolis.Economy;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Markets;
 using Novolis.Economy.Production;
-using Novolis.Economy.Simulation;
 
 namespace Novolis.Economy.Agents;
 
@@ -30,7 +30,6 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   private readonly CarrierFirmAgentPolicy _policy;
   private readonly Dictionary<InventoryLocationId, AgentSite> _siteByLoc;
   private readonly Dictionary<(Guid, Guid, TransitProfile), Itinerary?> _routeCache = new();
-  private readonly ulong _rngSalt;
   private TransportHubId _currentHub;
   private SpreadJob? _activeHaul;
 
@@ -43,7 +42,6 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   {
     FirmId = firmId;
     _policy = policy;
-    _rngSalt = rngSalt;
     _currentHub = homeHub;
     _siteByLoc = policy.Sites.ToDictionary(s => s.LocationId);
   }
@@ -64,8 +62,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     var world = context.World;
-    var rng = context.Simulation.Entropy.Stream(
-      $"firms/{FirmId.Value:N}/carrier/{_rngSalt}");
+    var rng = context.Rng;
 
     var ship = world.Shipments.FirstOrDefault(s =>
       !s.IsLegacy && s.FirmId.Equals(FirmId) && s.Status == ShipmentStatus.InTransit);
@@ -240,7 +237,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   {
     var floor = _policy.MinBunkerFuel;
     var profile = product is { } p ? ProfileFor(p) : TransitProfile.StandardCommercial;
-    if (!TryGetRoute(origin, dest, context.World, profile, out var itinerary)
+    if (!TryGetRoute(origin, dest, context.World.Corridors, profile, out var itinerary)
         || itinerary is null
         || itinerary.LegCount == 0)
     {
@@ -253,7 +250,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   }
 
   private void OfferLocalSale(
-    AgentContext context, AgentSite site, ProductId sku, decimal have, DeterministicRandom rng)
+    AgentContext context, AgentSite site, ProductId sku, decimal have, IAgentRandom rng)
   {
     HubOrderQuotes.CancelOpen(context, FirmId, site.LocationId, sku);
     var bestBid = context.World.HubOrders
@@ -315,7 +312,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   }
 
   private SpreadJob? BestOutboundFrom(
-    AgentContext context, AgentSite origin, ProductId sku, decimal have, DeterministicRandom rng)
+    AgentContext context, AgentSite origin, ProductId sku, decimal have, IAgentRandom rng)
   {
     if (origin.HubId is null)
     {
@@ -323,7 +320,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     }
 
     var world = context.World;
-    var wage = world.Policy.WageRatePerHour;
+    var wage = world.WageRatePerHour;
     var fuelCost = world.TransportFuelUnitCost;
     SpreadJob? best = null;
     foreach (var buy in world.HubOrders
@@ -347,7 +344,12 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
       var qty = Math.Min(have, Math.Min(buy.Remaining.Value, _policy.Vehicle.CargoCapacity.Value));
       var profile = ProfileFor(sku);
-      if (qty < 1m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, profile, out var itinerary))
+      if (qty < 1m || !TryGetRoute(
+            origin.HubId.Value,
+            dest.HubId.Value,
+            world.Corridors,
+            profile,
+            out var itinerary))
       {
         continue;
       }
@@ -373,7 +375,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   private List<SpreadJob> BuildSpreadJobs(AgentContext context)
   {
     var world = context.World;
-    var wage = world.Policy.WageRatePerHour;
+    var wage = world.WageRatePerHour;
     var fuelCost = world.TransportFuelUnitCost;
     var freight = _policy.FreightProducts;
     var sellsByProduct = new Dictionary<ProductId, List<HubOrder>>();
@@ -449,7 +451,12 @@ public sealed class CarrierFirmAgent : IEconomicAgent
 
           var qty = Math.Min(Math.Min(sell.Remaining.Value, buy.Remaining.Value), _policy.Vehicle.CargoCapacity.Value);
           var profile = ProfileFor(sell.ProductId);
-          if (qty < 2m || !TryGetRoute(origin.HubId.Value, dest.HubId.Value, world, profile, out var itinerary))
+          if (qty < 2m || !TryGetRoute(
+                origin.HubId.Value,
+                dest.HubId.Value,
+                world.Corridors,
+                profile,
+                out var itinerary))
           {
             continue;
           }
@@ -473,7 +480,7 @@ public sealed class CarrierFirmAgent : IEconomicAgent
   private bool TryGetRoute(
     TransportHubId origin,
     TransportHubId dest,
-    EconomyWorld world,
+    IReadOnlyDictionary<TransportCorridorId, TransportCorridor> corridors,
     TransitProfile profile,
     out Itinerary itinerary)
   {
@@ -491,7 +498,13 @@ public sealed class CarrierFirmAgent : IEconomicAgent
     }
 
     if (!ItineraryPlanner.TryPlan(
-          origin, dest, _policy.Vehicle.CargoCapacity, _policy.Vehicle, world.Corridors, out itinerary, profile))
+          origin,
+          dest,
+          _policy.Vehicle.CargoCapacity,
+          _policy.Vehicle,
+          corridors,
+          out itinerary,
+          profile))
     {
       _routeCache[key] = null;
       return false;

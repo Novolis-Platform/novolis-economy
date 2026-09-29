@@ -19,7 +19,10 @@ public enum LegalEntityKind
     Insurer,
 
     /// <summary>Policy authority and fiscal actor.</summary>
-    State
+    State,
+
+    /// <summary>Counterparty for explicitly settled imports and exports.</summary>
+    ExternalSector
 }
 
 /// <summary>Labor-hours per household-day — capacity, not productivity (SPEC §5).</summary>

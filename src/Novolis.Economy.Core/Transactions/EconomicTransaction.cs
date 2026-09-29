@@ -6,7 +6,10 @@ namespace Novolis.Economy.Core.Transactions;
 public sealed record EconomicTransaction(
     TransactionId Id,
     IReadOnlyList<EconomicEffect> Effects,
-    string? Reason = null)
+    string? Reason = null,
+    int? Period = null,
+    string? Phase = null,
+    EconomicEntityId? Actor = null)
 {
     /// <summary>
     /// Creates a transaction identity from the Core run context. Setup APIs may
@@ -17,7 +20,9 @@ public sealed record EconomicTransaction(
     public static EconomicTransaction Create(
         EconomyState state,
         IReadOnlyList<EconomicEffect> effects,
-        string? reason = null)
+        string? reason = null,
+        string? phase = null,
+        EconomicEntityId? actor = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(effects);
@@ -30,7 +35,13 @@ public sealed record EconomicTransaction(
                 state.TransitionSequence,
                 reason ?? string.Empty,
                 string.Join(";", effects.Select(effect => effect.ToString()))));
-        return new EconomicTransaction(id, effects, reason);
+        return new EconomicTransaction(
+            id,
+            effects,
+            reason,
+            state.Period,
+            phase,
+            actor);
     }
 }
 

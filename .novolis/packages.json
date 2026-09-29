@@ -9,6 +9,15 @@
       ],
       "project": "src/Novolis.Economy.Primitives/Novolis.Economy.Primitives.csproj"
     },
+    "Novolis.Economy.Abstractions": {
+      "paths": [
+        "src/Novolis.Economy.Abstractions/**",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "global.json"
+      ],
+      "project": "src/Novolis.Economy.Abstractions/Novolis.Economy.Abstractions.csproj"
+    },
     "Novolis.Economy.Core": {
       "paths": [
         "src/Novolis.Economy.Core/**",

@@ -7,11 +7,14 @@
 ```bash
 dotnet add package Novolis.Economy.Core
 dotnet add package Novolis.Economy.Simulation
+dotnet add package Novolis.Economy.Abstractions
 ```
 
 Restore from GitHub Packages (`2026.1.*`) per [novolis-governance package policy](https://github.com/Novolis-Platform/novolis-governance/blob/main/docs/package-policy.md).
 
-**Breaking:** PackageId `Novolis.Economy` is retired — use `Novolis.Economy.Core` for money, entities, regions, resources, and the period pipeline. Ops types (Quantity, hubs, commands) come from the ops packages Simulation already depends on.
+**Breaking:** PackageId `Novolis.Economy` is retired. Use `Novolis.Economy.Primitives`
+for universal values, `Novolis.Economy.Core` for authoritative state
+transitions, and `Novolis.Economy.Simulation` for model execution.
 
 ## Quick start
 
@@ -25,11 +28,13 @@ var world = new EconomyWorldBuilder()
     // ... products, facilities, inventory, cohorts ...
     .Build();
 
-var sim = new EconomySimulation(seed: 42, world);
+var sim = EconomySimulation.FromModel(
+    seed: 42,
+    new Novolis.Economy.Simulation.Models.SmallOpenRegionalTradeModel());
 sim.Enqueue(new SetRetailPrice(firm, facility, product, Money.From(5m)));
 sim.Enqueue(new SetProductionPlan(firm, facility, product, Quantity.From(10m)));
 await sim.AdvanceAsync(SimulationDuration.FromHours(24));
-// Period boundaries run EconomyEngine.Advance on world.CoreState
+// Simulation selects the model's period runner; Core remains the authority.
 ```
 
 ## Build and test

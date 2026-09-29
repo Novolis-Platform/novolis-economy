@@ -24,14 +24,12 @@ public sealed record ExtractiveFirmAgentPolicy(
 public sealed class ExtractiveFirmAgent : IEconomicAgent
 {
   private readonly ExtractiveFirmAgentPolicy _policy;
-  private readonly ulong _rngSalt;
 
   /// <summary>Creates the agent.</summary>
   public ExtractiveFirmAgent(FirmId firmId, ExtractiveFirmAgentPolicy policy, ulong rngSalt = 0x45585452UL)
   {
     FirmId = firmId;
     _policy = policy;
-    _rngSalt = rngSalt;
   }
 
   /// <inheritdoc />
@@ -44,8 +42,7 @@ public sealed class ExtractiveFirmAgent : IEconomicAgent
   public void Tick(AgentContext context)
   {
     HubOrderQuotes.CancelOpen(context, FirmId);
-    var rng = context.Simulation.Entropy.Stream(
-      $"firms/{FirmId.Value:N}/extractive/{_rngSalt}");
+    var rng = context.Rng;
     foreach (var site in _policy.Sites.Where(s => s.FacilityId is not null))
     {
       var loc = site.LocationId;

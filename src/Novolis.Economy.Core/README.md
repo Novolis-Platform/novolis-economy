@@ -8,10 +8,15 @@
 
 # Novolis.Economy.Core
 
-Bounded-minimum (BM) economic model: immutable `EconomyState`, ordered `IEconomyStep` fold, stock–flow discipline.
+Bounded-minimum (BM) economic authority: immutable `EconomyState`, positions,
+claims, transactions, ledgers, and invariant-preserving atomic transitions.
 PackageId: `Novolis.Economy.Core` (`2026.1.*` on GitHub Packages). Normative types and rules: [`SPEC.md`](SPEC.md).
 
-This package is the **economic kernel**. Ops packages (`Production`, `Logistics`, `Simulation`, …) depend on it. Simulation owns hourly orchestration; Core applies authoritative position, monetary, and claim transitions and settles its period pipeline at period boundaries. `CoreEconomyBridge` is a transitional integration adapter, not a second stock of record.
+This package is the **economic authority**. Domain packages and Simulation
+depend on it. Simulation owns clocks, phases, model composition, and period
+sequencing; Core applies authoritative position, monetary, claim, and
+transaction transitions. Core contains no scheduler or model-specific phase
+ordering.
 
 The authority graph is intentionally narrow:
 
@@ -193,13 +198,21 @@ Contrast: Arrow–Debreu GE clears all markets simultaneously; BM is a **sequent
 
 ## 20. Period pipeline
 
-`DefaultPeriodPipeline.Create()` — sixteen mechanisms in SPEC order; `EconomyEngine.Advance` folds them. Demand uses **posted unit prices + quantity rationing** (no order book).
+The bounded period pipeline is owned by
+`Novolis.Economy.Simulation.Bounded`. It applies sixteen mechanisms in SPEC
+order through `BoundedPeriodEngine`; each mechanism calls Core's atomic
+transitions. Demand uses **posted unit prices + quantity rationing** (no order
+book). Other Simulation models may select a different composition without
+changing Core.
 
 ---
 
 ## 21. Aggregate state
 
-`EconomyState` matches SPEC §21 fields, plus Core extensions: `Resources`, `Lanes`, `PostedPrices`, `PendingLosses`, `Flows`, `Scratch`, and dictionary-keyed holdings/share classes for O(1) upsert.
+`EconomyState` matches SPEC §21 fields, plus Core extensions: `Resources`,
+`Lanes`, `PostedPrices`, `PendingLosses`, `Flows`, and dictionary-keyed
+holdings/share classes for O(1) upsert. Period scratch and model
+specifications are Simulation-owned.
 
 ---
 
@@ -237,10 +250,14 @@ logistics. Households are unownable; firms issue unit shares.
 
 ```csharp
 using Novolis.Economy.Core.Extensions;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation;
+using Novolis.Economy.Simulation.Models;
 
-var engine = DefaultPeriodPipeline.CreateEngine();
-var next = engine.Advance(state);
+var simulation = EconomySimulation.FromModel(
+    seed: 42,
+    new DeterministicBoundedModel());
+await simulation.AdvanceAsync(SimulationDuration.FromHours(24));
+var next = simulation.State.World.CoreState;
 var snap = next.Snapshot();                 // macro stocks / counts
 var firm = next.InsightFor(firmId);         // liquidity vs solvency
 var regions = next.RegionInsights();        // capacity utilization

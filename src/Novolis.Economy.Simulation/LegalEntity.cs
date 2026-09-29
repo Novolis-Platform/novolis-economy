@@ -11,6 +11,12 @@ public enum LegalEntityKind
 
   /// <summary>Household sector party (owns claims; does not issue shares).</summary>
   Household = 2,
+
+  /// <summary>Explicit non-domestic counterparty for open-sector settlement.</summary>
+  ExternalSector = 3,
+
+  /// <summary>Deposit-taking lender used by endogenous credit profiles.</summary>
+  Bank = 4,
 }
 
 /// <summary>
@@ -44,5 +50,5 @@ public sealed class LegalEntity
 
   /// <summary>Whether this entity may issue ownership claims.</summary>
   public bool CanIssueShares =>
-    Kind is LegalEntityKind.Firm or LegalEntityKind.Civic;
+    Kind is LegalEntityKind.Firm or LegalEntityKind.Civic or LegalEntityKind.Bank;
 }

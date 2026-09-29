@@ -1,3 +1,5 @@
+using Novolis.Economy.Abstractions;
+
 namespace Novolis.Economy;
 
 /// <summary>Seeded random source for deterministic simulation.</summary>
@@ -14,7 +16,7 @@ public interface IEconomyRandom
 }
 
 /// <summary>Deterministic xorshift64* PRNG.</summary>
-public sealed class DeterministicRandom : IEconomyRandom
+public sealed class DeterministicRandom : IEconomyRandom, IAgentRandom
 {
   private ulong _state;
 

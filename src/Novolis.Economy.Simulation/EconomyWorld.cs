@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Novolis.Economy;
+using Novolis.Economy.Agents;
 using Novolis.Economy.Accounting;
 using Novolis.Economy.Core;
 using Novolis.Economy.Core.Finance;
@@ -133,7 +134,7 @@ public sealed class FacilityBinding
 }
 
 /// <summary>Mutable economic world hosted by <see cref="SimulationState"/>.</summary>
-public sealed class EconomyWorld
+public sealed class EconomyWorld : IAgentWorldView
 {
   /// <summary>Creates an empty world.</summary>
   public EconomyWorld(
@@ -144,7 +145,6 @@ public sealed class EconomyWorld
     Policy = policy ?? new EconomyPolicy();
     Registration = registrationMode;
     Specification = modelSpecification ?? EconomyModelSpecification.Default;
-    CoreState = CoreState with { ModelSpecification = Specification };
   }
 
   /// <summary>Policy.</summary>
@@ -204,6 +204,22 @@ public sealed class EconomyWorld
   /// <summary>Unit cost used when writing off burned fuel (defaults to 1).</summary>
   public Money TransportFuelUnitCost { get; set; } = Money.From(1m);
 
+  /// <summary>Selected monetary closure for this model.</summary>
+  public MonetaryClosure MonetaryClosure { get; set; } = MonetaryClosure.Open;
+
+  /// <summary>Explicit external-sector counterparty, when selected.</summary>
+  public FirmId? ExternalSectorFirmId { get; set; }
+
+  /// <summary>Read-side external trade settlement totals.</summary>
+  public ExternalTradeLedger ExternalTrade { get; } = new();
+
+  /// <inheritdoc />
+  Money IAgentWorldView.WageRatePerHour => Policy.WageRatePerHour;
+
+  /// <inheritdoc />
+  Money IAgentWorldView.HouseholdComfortThresholdPerHousehold =>
+    Policy.HouseholdComfortThresholdPerHousehold;
+
   /// <summary>Restock routes: facility storage → retail (optional auto-restock).</summary>
   public Dictionary<FacilityId, FreightRouteId> RestockRoutes { get; } = new();
 
@@ -258,6 +274,31 @@ public sealed class EconomyWorld
   /// <summary>Market book.</summary>
   public ObservedMarketBook MarketBook { get; } = new();
 
+  IReadOnlyDictionary<FirmId, FirmLedger> IAgentWorldView.Ledgers => Ledgers;
+
+  IReadOnlyList<ActiveShipment> IAgentWorldView.Shipments => Shipments;
+
+  IReadOnlyList<PlanShipment> IAgentWorldView.PendingPlanShipments =>
+    PendingPlanShipments;
+
+  IReadOnlyList<PlanReposition> IAgentWorldView.PendingPlanRepositions =>
+    PendingPlanRepositions;
+
+  IReadOnlyList<CohortState> IAgentWorldView.Cohorts => Cohorts;
+
+  IReadOnlyList<Novolis.Economy.Finance.Loan> IAgentWorldView.Loans => Loans;
+
+  IReadOnlyList<Novolis.Economy.Markets.HubOrder> IAgentWorldView.HubOrders =>
+    HubOrders;
+
+  IReadOnlyDictionary<TransportHubId, TransportHub> IAgentWorldView.Hubs => Hubs;
+
+  IReadOnlyDictionary<TransportCorridorId, TransportCorridor> IAgentWorldView.Corridors =>
+    Corridors;
+
+  IReadOnlyDictionary<VehicleClassId, VehicleClass> IAgentWorldView.VehicleClasses =>
+    VehicleClasses;
+
   /// <summary>
   /// Core bounded-minimum aggregate (economic authority). Replaced immutably on period Advance
   /// and when Logistics deliveries credit holdings.
@@ -311,6 +352,33 @@ public sealed class EconomyWorld
       firmId,
       Core.LegalEntityKind.Household);
     AvailableLaborHours[firmId] = 0m;
+    return entity;
+  }
+
+  /// <summary>Ensures an explicit external-sector counterparty.</summary>
+  public LegalEntity EnsureExternalSector(FirmId firmId, string name)
+  {
+    EnsureFirm(firmId, name);
+    var entity = new LegalEntity(firmId, LegalEntityKind.ExternalSector);
+    Entities[firmId] = entity;
+    CoreMonetaryBridge.EnsureEntity(
+      this,
+      firmId,
+      Core.LegalEntityKind.ExternalSector);
+    ExternalSectorFirmId = firmId;
+    return entity;
+  }
+
+  /// <summary>Ensures a bank counterparty for endogenous credit.</summary>
+  public LegalEntity EnsureBank(FirmId firmId, string name)
+  {
+    EnsureFirm(firmId, name);
+    var entity = new LegalEntity(firmId, LegalEntityKind.Bank);
+    Entities[firmId] = entity;
+    CoreMonetaryBridge.EnsureEntity(
+      this,
+      firmId,
+      Core.LegalEntityKind.Bank);
     return entity;
   }
 

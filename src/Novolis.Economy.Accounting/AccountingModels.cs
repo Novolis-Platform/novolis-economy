@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Novolis.Economy;
+using Novolis.Economy.Abstractions;
 
 namespace Novolis.Economy.Accounting;
 
@@ -112,7 +113,7 @@ public sealed class Invoice
 }
 
 /// <summary>Per-firm ledger balances and chart.</summary>
-public sealed class FirmLedger
+public sealed class FirmLedger : ILoanLedger<SimulationDate>
 {
   private readonly Dictionary<AccountRole, AccountId> _roles = new();
   private readonly Dictionary<AccountId, Money> _balances = new();
@@ -207,6 +208,61 @@ public sealed class FirmLedger
     Post(AccountRole.Inventory, AccountRole.Equity, amount, date, "Opening inventory");
   }
 
+  /// <inheritdoc />
+  public void PostLoanDisbursement(
+    ILoanLedger<SimulationDate> borrower,
+    Money principal,
+    SimulationDate date) =>
+    LedgerEngine.PostLoanDisbursement(
+      this,
+      RequireFirmLedger(borrower),
+      principal,
+      date);
+
+  /// <inheritdoc />
+  public void PostHouseholdLoanDisbursement(
+    ILoanLedger<SimulationDate> borrower,
+    Money principal,
+    SimulationDate date) =>
+    LedgerEngine.PostHouseholdLoanDisbursement(
+      this,
+      RequireFirmLedger(borrower),
+      principal,
+      date);
+
+  /// <inheritdoc />
+  public void PostInterestAccrual(
+    ILoanLedger<SimulationDate> borrower,
+    Money interest,
+    SimulationDate date) =>
+    LedgerEngine.PostInterestAccrual(
+      this,
+      RequireFirmLedger(borrower),
+      interest,
+      date);
+
+  /// <inheritdoc />
+  public void PostLoanRepayment(
+    ILoanLedger<SimulationDate> borrower,
+    Money amount,
+    SimulationDate date) =>
+    LedgerEngine.PostLoanRepayment(
+      this,
+      RequireFirmLedger(borrower),
+      amount,
+      date);
+
+  /// <inheritdoc />
+  public void PostHouseholdLoanRepayment(
+    ILoanLedger<SimulationDate> borrower,
+    Money amount,
+    SimulationDate date) =>
+    LedgerEngine.PostHouseholdLoanRepayment(
+      this,
+      RequireFirmLedger(borrower),
+      amount,
+      date);
+
   /// <summary>Fingerprint for world hashing.</summary>
   public ulong Fingerprint()
   {
@@ -243,6 +299,12 @@ public sealed class FirmLedger
     bytes[15] = 0xEE;
     return new Guid(bytes);
   }
+
+  private static FirmLedger RequireFirmLedger(ILoanLedger<SimulationDate> ledger) =>
+    ledger as FirmLedger
+    ?? throw new ArgumentException(
+      "Loan posting requires the Accounting FirmLedger adapter.",
+      nameof(ledger));
 }
 
 /// <summary>Double-entry posting helpers for commerce flows.</summary>

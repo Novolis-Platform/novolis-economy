@@ -3,7 +3,7 @@ using Novolis.Economy;
 using Novolis.Economy.Accounting;
 using Novolis.Economy.Agents;
 using Novolis.Economy.Core;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Finance;
 using Novolis.Economy.Logistics;
 using Novolis.Economy.Logistics.Extensions;

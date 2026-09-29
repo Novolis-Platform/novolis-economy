@@ -1069,12 +1069,13 @@ A deterministic period may execute in this order:
 15. Apply household consumption and migration.
    - Living overflow: move/split cohorts toward regions with spare `LivingCapacity` when `MigrationPreference ≥ 0.5`.
    - Tax push: when `HouseholdTaxRate ≥ 0.28` and `MigrationPreference ≥ 0.65`, households may leave even without overflow (partial cohort splits allowed).
-   - Scratch: `HouseholdsMigrated` counts households that changed region this period.
 
 16. Reconcile stocks, claims, and ownership.
 ```
 
-The exact sequence is part of the economic model. Changing it may alter results, especially under liquidity constraints.
+The exact sequence is part of the bounded Simulation model. Changing it may
+alter results, especially under liquidity constraints. Core supplies the
+atomic transitions used by the sequence; it does not own the sequence.
 
 ---
 
@@ -1102,31 +1103,32 @@ public sealed record EconomyState(
     IReadOnlyDictionary<ClaimId, FinancialClaim> Claims);
 ```
 
-The state transition is conceptually:
+Core transitions are conceptually:
 
 ```csharp
-public interface IEconomyStep
+public static EconomyState Apply(
+    EconomyState state,
+    EconomicTransaction transaction)
 {
-    EconomyState Execute(EconomyState current);
+    // validate and apply one atomic, invariant-preserving transaction
 }
 ```
 
-Each economic mechanism may be implemented as a separate step:
+Simulation composes those transitions into a selected model. For the
+deterministic bounded profile, the composition is exposed as:
 
 ```csharp
-public sealed record EconomyEngine(
-    IReadOnlyList<IEconomyStep> Steps)
+public interface IBoundedPeriodStep
 {
-    public EconomyState Advance(EconomyState state) =>
-        Steps.Aggregate(state, static (current, step) => step.Execute(current));
+    BoundedPeriodState Execute(BoundedPeriodState current);
 }
 ```
 
 The record types explain the model. They do not require the implementation to become an inheritance-heavy object simulation.
 
-The current 16-step pipeline is transitional orchestration. Simulation
-eventually owns the clock and invokes Core transitions; Core remains the
-authority that applies and validates those transitions.
+`Novolis.Economy.Simulation` owns the clock, period runner, model composition,
+and phase ordering; Core remains the authority that applies and validates
+transitions.
 
 ---
 

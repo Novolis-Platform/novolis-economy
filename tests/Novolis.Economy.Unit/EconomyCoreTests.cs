@@ -3,7 +3,7 @@ using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Production;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Core.Transport;
 using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
@@ -23,7 +23,7 @@ public sealed class EconomyCoreTests
     [Test]
     public async Task Default_Pipeline_Advances_Empty_Economy()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         await Assert.That(engine.Steps.Count).IsEqualTo(16);
         var next = engine.Advance(EconomyState.Empty);
         await Assert.That(next.Period).IsEqualTo(1);
@@ -121,7 +121,7 @@ public sealed class EconomyCoreTests
     {
         var state = CoreScenario.Fiscal();
         var totalBefore = state.Entities.Values.Sum(e => e.Cash.Amount);
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var next = engine.Advance(state);
         var totalAfter = next.Entities.Values.Sum(e => e.Cash.Amount);
         await Assert.That(totalAfter).IsEqualTo(totalBefore);

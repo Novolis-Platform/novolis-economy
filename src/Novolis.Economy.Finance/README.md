@@ -8,7 +8,9 @@
 
 # Novolis.Economy.Finance
 
-Inter-firm **term loans**: originate, hourly interest accrual onto notes, repayment, and default at term when cash is insufficient.
+Inter-firm **term-loan behavior**: origination policy, interest convention,
+repayment, and default decisions. Core owns the resulting financial claims;
+Accounting observes them.
 
 Agents (not ML) enqueue `OriginateLoan` / `RepayLoan` from `Novolis.Economy.Production`. Settlement runs in Simulation's `SettleFinance` phase via `LoanEngine`.
 
@@ -18,7 +20,8 @@ Agents (not ML) enqueue `OriginateLoan` / `RepayLoan` from `Novolis.Economy.Prod
 dotnet add package Novolis.Economy.Finance
 ```
 
-Depends on `Novolis.Economy.Accounting` and `Novolis.Economy.Production`.
+Depends on `Novolis.Economy.Abstractions`, `Novolis.Economy.Core`, and
+`Novolis.Economy.Production`. Finance does not depend on Accounting.
 
 ## Quick start
 
@@ -50,7 +53,8 @@ Household lenders use `LoanEngine.TryOriginateHouseholdLender` (budget validated
 
 | Package | Role |
 |---------|------|
-| `Novolis.Economy.Accounting` | `LedgerEngine.PostLoanDisbursement`, interest / repayment posts |
+| `Novolis.Economy.Core` | Authoritative claims, obligations, and atomic settlement |
+| `Novolis.Economy.Accounting` | Read-only financial projections and transaction explanations |
 | `Novolis.Economy.Production` | `OriginateLoan`, `RepayLoan`, `LoanOriginated`, … events |
 | `Novolis.Economy.Agents` | `TreasuryFirmAgent`, `HouseholdFirmAgent` enqueue loan commands |
 | `Novolis.Economy.Simulation` | `SettleFinance` phase, `ICreditCirculationSource` impl |

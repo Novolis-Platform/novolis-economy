@@ -3,7 +3,7 @@ using Novolis.Economy.Core.Extensions;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Core.Transport;
 using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
@@ -22,7 +22,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Household_Tax_Drains_Cash_To_State_Conserving_Total()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 200m, stateCash: 50m, transfer: 0m, hhTax: 0.10m);
         var cash0 = state.TotalCash().Amount;
 
@@ -41,7 +41,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Firm_Tax_And_Household_Tax_Both_Fund_Treasury()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 100m, stateCash: 0m, transfer: 0m, hhTax: 0.2m, firmCash: 50m, firmTax: 0.1m);
         var cash0 = state.TotalCash().Amount;
         state = engine.Advance(state);
@@ -54,7 +54,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Transfer_Then_Tax_Same_Period_Conserves_And_Orders_Correctly()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         // State 100 → transfer 20 → HH 120; then tax 10% of HH cash → 12 tax
         var state = FiscalNation.Open(hhCash: 100m, stateCash: 100m, transfer: 20m, hhTax: 0.10m);
         var cash0 = state.TotalCash().Amount;
@@ -69,7 +69,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Multi_Household_Cohort_Transfer_Is_All_Or_Nothing_Then_Stalls()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         // 2 households × 10 = 20 needed; state 25 funds once, then stalls with 5 left
         var state = FiscalNation.Open(hhCash: 10m, stateCash: 25m, transfer: 10m, hhTax: 0m);
         // bump cohort size to 2 (same entity still receives total)
@@ -95,7 +95,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Production_Accrues_Wages_And_Settles_To_Household()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Factory(wage: 1m, laborHours: 1m, capacity: 3m, ore: 100m);
         var cash0 = state.TotalCash().Amount;
         state = engine.Advance(state);
@@ -110,7 +110,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Twelve_Period_Fiscal_Loop_Never_Creates_Bank_Money()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 80m, stateCash: 120m, transfer: 5m, hhTax: 0.05m, firmCash: 40m, firmTax: 0.02m);
         var cash0 = state.TotalCash().Amount;
         for (var i = 0; i < 12; i++)
@@ -129,7 +129,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task High_Tax_Regime_Accumulates_More_State_Cash_Than_Low_Tax()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var high = FiscalNation.Open(hhCash: 200m, stateCash: 50m, transfer: 0m, hhTax: 0.25m);
         var low = FiscalNation.Open(hhCash: 200m, stateCash: 50m, transfer: 0m, hhTax: 0.05m);
         for (var i = 0; i < 6; i++)
@@ -147,7 +147,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Generous_Transfers_Redistribute_Until_Treasury_Thins()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 10m, stateCash: 100m, transfer: 15m, hhTax: 0m);
         var hhPath = new List<decimal>();
         for (var i = 0; i < 8; i++)
@@ -191,7 +191,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Interest_Obligation_Created_Each_Period_On_Performing_Loan()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.BankLoanInterest(principal: 100m, rate: 0.05m);
         var deposits0 = state.TotalDeposits().Amount;
         state = engine.Advance(state);
@@ -222,7 +222,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Carriage_Preserves_Owner_Across_Travel()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Lane(travel: 2, qty: 6m);
         state = TransferEngine.StartTransfer(
             state, FiscalNation.FirmId, FiscalNation.OreId, 6m,
@@ -238,7 +238,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Zero_Policy_Is_Quiet_Period_With_Invariant_Hold()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 10m, stateCash: 10m, transfer: 0m, hhTax: 0m);
         var cash0 = state.TotalCash().Amount;
         state = engine.Advance(state);
@@ -251,7 +251,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Tax_Base_Uses_Cash_After_Transfer_Not_Opening_Stock()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 0m, stateCash: 50m, transfer: 40m, hhTax: 0.25m);
         state = engine.Advance(state);
         // After transfer HH=40; tax = 10
@@ -262,7 +262,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Delinquent_Wage_Ages_To_Default_While_Cash_Conserved()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.UnpayableWage();
         var cash0 = state.TotalCash().Amount;
         state = engine.Advance(state); // delinquent
@@ -276,7 +276,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Insurance_Premium_Is_Money_Conserving_Obligation()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.InsuredFirm(premium: 8m);
         var cash0 = state.TotalCash().Amount;
         state = engine.Advance(state);
@@ -291,7 +291,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     public async Task Nation_Host_Style_Delivery_Totals_Match_Flow_Ledger()
     {
         // Pattern Civics.EconomyBridge expects: read Flows after Advance, feed civic context.
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.Open(hhCash: 150m, stateCash: 80m, transfer: 12m, hhTax: 0.08m);
         state = engine.Advance(state);
         var tax = (double)state.Flows.TaxCollected.Amount;
@@ -334,7 +334,7 @@ public sealed class KnownDynamicsFiscalLaborScenariosTests
     [Test]
     public async Task Three_Sector_Closed_Economy_Cash_Identity_Holds_Year()
     {
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         var state = FiscalNation.ThreeSector(hh: 60m, firm: 80m, stateCash: 40m, bank: 20m);
         var cash0 = state.TotalCash().Amount;
         await Assert.That(cash0).IsEqualTo(200m);

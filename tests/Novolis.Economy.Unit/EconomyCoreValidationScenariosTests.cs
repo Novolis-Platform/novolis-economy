@@ -2,7 +2,7 @@ using Novolis.Economy.Core;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
 using Novolis.Economy.Core.Invariants;
-using Novolis.Economy.Core.Steps;
+using Novolis.Economy.Simulation.Bounded;
 using Novolis.Economy.Core.Transport;
 using CoreMoney = Novolis.Economy.Primitives.Money;
 using CoreEntity = Novolis.Economy.Core.LegalEntity;
@@ -35,7 +35,7 @@ public sealed class EconomyCoreValidationScenariosTests
         var depositsBefore = ValidationScenarios.TotalDeposits(state);
 
         // Opening fiscal: State → Household (money-conserving)
-        var engine = DefaultPeriodPipeline.CreateEngine();
+        var engine = DefaultBoundedPeriodPipeline.CreateEngine();
         state = engine.Advance(state);
 
         await Assert.That(ValidationScenarios.TotalCash(state)).IsEqualTo(cashBefore);
