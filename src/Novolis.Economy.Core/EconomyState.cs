@@ -31,6 +31,10 @@ public sealed record EconomyState(
     long TransitionSequence = 0,
     IReadOnlyList<EconomicTransaction>? TransactionJournal = null)
 {
+    /// <summary>Stable compatibility unit of account for scenarios that have not registered a monetary asset explicitly.</summary>
+    public static EconomicAssetId DefaultUnitOfAccountAssetId { get; } =
+        EconomicAssetId.From(Guid.Parse("2e2b4d3c-7b31-4f63-9e6a-6a4d0c8d4e11"));
+
     /// <summary>Empty economy at period 0.</summary>
     public static EconomyState Empty { get; } = new(
         Period: 0,
@@ -73,13 +77,6 @@ public sealed record EconomyState(
     /// </summary>
     public IReadOnlyList<EconomicTransaction> Journal =>
         TransactionJournal ?? Array.Empty<EconomicTransaction>();
-
-    /// <summary>
-    /// Stable compatibility unit of account for scenarios that have not
-    /// registered a monetary asset explicitly.
-    /// </summary>
-    public static EconomicAssetId DefaultUnitOfAccountAssetId { get; } =
-        EconomicAssetId.From(Guid.Parse("2e2b4d3c-7b31-4f63-9e6a-6a4d0c8d4e11"));
 
     /// <summary>Configured monetary asset used by cash positions.</summary>
     public EconomicAssetId MonetaryAssetId =>

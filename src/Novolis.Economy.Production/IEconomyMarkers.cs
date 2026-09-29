@@ -1,7 +1,12 @@
+using Novolis.Economy.Abstractions;
+
 namespace Novolis.Economy;
 
 /// <summary>Marker for player or AI decisions applied to the simulation.</summary>
-public interface IEconomyCommand;
+public interface IEconomyCommand : IEconomicModelCommand
+{
+  string IEconomicModelCommand.Kind => GetType().Name;
+}
 
 /// <summary>Marker for facts that occurred during simulation (diagnostics and reporting).</summary>
 public interface IEconomyEvent;

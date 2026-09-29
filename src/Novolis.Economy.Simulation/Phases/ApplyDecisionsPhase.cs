@@ -41,6 +41,13 @@ public sealed class ApplyDecisionsPhase : ISimulationPhase
     {
       switch (command)
       {
+        case RegisterFirm register:
+          if (register.FirmId != default && !string.IsNullOrWhiteSpace(register.Name))
+          {
+            world.EnsureFirm(register.FirmId, register.Name);
+          }
+
+          break;
         case SetRetailPrice price:
         {
           var key = (price.FirmId, price.FacilityId, price.ProductId);

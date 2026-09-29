@@ -10,9 +10,14 @@
     <Project Path="src/Novolis.Economy.Logistics/Novolis.Economy.Logistics.csproj" />
     <Project Path="src/Novolis.Economy.Population/Novolis.Economy.Population.csproj" />
     <Project Path="src/Novolis.Economy.Agents/Novolis.Economy.Agents.csproj" />
+    <Project Path="src/Novolis.Economy.Models.SmallOpenRegionalTrade/Novolis.Economy.Models.SmallOpenRegionalTrade.csproj" />
+    <Project Path="src/Novolis.Economy.Models.DeterministicBounded/Novolis.Economy.Models.DeterministicBounded.csproj" />
     <Project Path="src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Novolis.Economy.Unit/Novolis.Economy.Unit.csproj" />
+    <Project Path="tests/Novolis.Economy.Integration.Game/Novolis.Economy.Integration.Game.csproj" />
+    <Project Path="tests/Novolis.Economy.Integration.Simulation/Novolis.Economy.Integration.Simulation.csproj" />
+    <Project Path="tests/Novolis.Economy.Integration.Research/Novolis.Economy.Integration.Research.csproj" />
   </Folder>
 </Solution>

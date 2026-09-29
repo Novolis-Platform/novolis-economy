@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Novolis.Economy.Integration.Research</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Novolis.Economy.Abstractions/Novolis.Economy.Abstractions.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Core/Novolis.Economy.Core.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Models.SmallOpenRegionalTrade/Novolis.Economy.Models.SmallOpenRegionalTrade.csproj" />
+  </ItemGroup>
+</Project>

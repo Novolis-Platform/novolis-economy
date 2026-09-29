@@ -1,8 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace Novolis.Economy.Primitives;
 
 /// <summary>A non-negative quantity denominated in one economic asset.</summary>
 public readonly record struct AssetAmount
 {
+    [JsonConstructor]
     public AssetAmount(EconomicAssetId asset, decimal quantity)
     {
         if (quantity < 0m)

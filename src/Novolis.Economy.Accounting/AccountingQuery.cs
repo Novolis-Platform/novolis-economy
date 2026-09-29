@@ -90,6 +90,11 @@ public static class AccountingQuery
         .Select(entity => entity.Id)
         .ToHashSet(),
       FinancialScope.Group group => group.Ids,
+      FinancialScope.Sector sector => sector.Ids,
+      FinancialScope.ExternalSector => state.Entities.Values
+        .Where(entity => entity.Kind == LegalEntityKind.ExternalSector)
+        .Select(entity => entity.Id)
+        .ToHashSet(),
       _ => throw new ArgumentOutOfRangeException(nameof(scope))
     };
   }

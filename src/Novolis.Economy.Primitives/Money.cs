@@ -1,8 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace Novolis.Economy.Primitives;
 
 /// <summary>Monetary amount in the scenario's unit of account.</summary>
-public readonly record struct Money(decimal Amount) : IComparable<Money>
+public readonly record struct Money : IComparable<Money>
 {
+    [JsonConstructor]
+    public Money(decimal amount) => Amount = amount;
+
+    public decimal Amount { get; }
+
     public static Money Zero { get; } = new(0m);
     public static Money From(decimal amount) => new(amount);
 

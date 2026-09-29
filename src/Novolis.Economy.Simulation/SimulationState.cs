@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Novolis.Economy;
+using Novolis.Economy.Abstractions;
 
 namespace Novolis.Economy.Simulation;
 
@@ -26,24 +27,21 @@ public sealed class SimulationState
   public SimulationState(
     ulong seed,
     EconomyWorld world,
-    SimulationModelIdentity? modelIdentity = null,
-    SimulationModelDefinition? modelDefinition = null)
+    EconomicModelIdentity? modelIdentity = null)
   {
     ArgumentNullException.ThrowIfNull(world);
     Seed = seed;
     World = world;
     ModelIdentity = modelIdentity
-      ?? modelDefinition?.Identity
-      ?? SimulationModelIdentity.Legacy(world.Specification);
+      ?? new EconomicModelIdentity(
+        "OperationalHost",
+        world.Specification.Version);
     World.CoreState = World.CoreState with { SimulationSeed = seed };
     Entropy = new SimulationEntropy(seed);
     Clock = SimulationHour.Epoch;
     _lastRngState = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
     _cachedWorldFingerprint = world.Fingerprint();
     var specificationHash = SimulationRunManifest.HashSpecification(world.Specification);
-    var modelDescriptorHash = modelDefinition is null
-      ? string.Empty
-      : SimulationRunManifest.HashModelDefinition(modelDefinition);
     Manifest = new SimulationRunManifest(
       world.Specification.Version,
       seed,
@@ -57,11 +55,9 @@ public sealed class SimulationState
         specificationHash,
         ModelIdentity.Id,
         ModelIdentity.Version,
-        modelDescriptorHash),
+        string.Empty),
       ModelIdentity.Id,
-      modelDescriptorHash,
-      modelDefinition?.RuleIdentities,
-      modelDefinition?.AgentProfileIds);
+      string.Empty);
     RecomputeHash();
   }
 
@@ -69,7 +65,7 @@ public sealed class SimulationState
   public ulong Seed { get; }
 
   /// <summary>Complete model selected for this run.</summary>
-  public SimulationModelIdentity ModelIdentity { get; }
+  public EconomicModelIdentity ModelIdentity { get; }
 
   /// <summary>Named deterministic entropy streams for this run.</summary>
   public SimulationEntropy Entropy { get; }

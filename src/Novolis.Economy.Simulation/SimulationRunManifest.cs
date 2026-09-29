@@ -28,27 +28,6 @@ public sealed record SimulationRunManifest(
   }
 
   /// <summary>
-  /// Stable hash of the complete model selection, including rules, actors,
-  /// and model-specific scenario inputs.
-  /// </summary>
-  public static string HashModelDefinition(SimulationModelDefinition model)
-  {
-    ArgumentNullException.ThrowIfNull(model);
-    var payload = new
-    {
-      model.Identity.Id,
-      model.Identity.Version,
-      Rules = model.RuleIdentities,
-      Agents = model.AgentProfileIds,
-      model.Specification,
-      Descriptor = model.ReproducibilityDescriptor
-    };
-    var json = JsonSerializer.Serialize(payload);
-    return Convert.ToHexString(
-      SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
-  }
-
-  /// <summary>
   /// Stable identity for the initial scenario, including its declared model
   /// specification and seed.
   /// </summary>

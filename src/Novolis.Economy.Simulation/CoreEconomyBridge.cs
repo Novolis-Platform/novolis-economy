@@ -22,7 +22,11 @@ public static class CoreEconomyBridge
     return RegionId.From(hubId.Value);
   }
 
-  /// <summary>Register hub ↔ region; creates a Core region stub if missing.</summary>
+  /// <summary>
+  /// Register hub ↔ region. Strict worlds leave missing registrations
+  /// unresolved so a later economic transition fails explicitly; implicit
+  /// worlds may opt into a generic region.
+  /// </summary>
   public static void BindHubRegion(EconomyWorld world, TransportHubId hubId, RegionId? regionId = null)
   {
     var region = regionId ?? RegionId.From(hubId.Value);
@@ -31,15 +35,18 @@ public static class CoreEconomyBridge
       world.InventoryLocationRegions[hub.LocationId] = region;
     if (!world.CoreState.Regions.ContainsKey(region))
     {
-      var regions = new Dictionary<RegionId, Region>(world.CoreState.Regions)
+      if (world.Registration == RegistrationMode.Implicit)
       {
-        [region] = new Region(
-          region,
-          LivingCapacity: 1_000_000,
-          ProductionCapacity: 1_000_000,
-          LogisticsCapacity: 1_000_000)
-      };
-      world.CoreState = world.CoreState with { Regions = regions };
+        var regions = new Dictionary<RegionId, Region>(world.CoreState.Regions)
+        {
+          [region] = new Region(
+            region,
+            LivingCapacity: 1_000_000,
+            ProductionCapacity: 1_000_000,
+            LogisticsCapacity: 1_000_000)
+        };
+        world.CoreState = world.CoreState with { Regions = regions };
+      }
     }
   }
 

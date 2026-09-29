@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Novolis.Economy.Primitives;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Novolis.Economy.Primitives;
 /// </summary>
 public readonly record struct EconomicPosition
 {
+    [JsonConstructor]
     public EconomicPosition(
         EconomicEntityId owner,
         EconomicAssetId asset,

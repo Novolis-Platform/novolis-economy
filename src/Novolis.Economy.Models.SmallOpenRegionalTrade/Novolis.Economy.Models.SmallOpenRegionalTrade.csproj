@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Novolis.Economy.Models.SmallOpenRegionalTrade</PackageId>
+    <IsPackable>true</IsPackable>
+    <Description>Host-neutral small open regional trade economic model and named scenarios.</Description>
+    <RootNamespace>Novolis.Economy.Models.SmallOpenRegionalTrade</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Novolis.Economy.Abstractions\Novolis.Economy.Abstractions.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Primitives\Novolis.Economy.Primitives.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Core\Novolis.Economy.Core.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Production\Novolis.Economy.Production.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Markets\Novolis.Economy.Markets.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Finance\Novolis.Economy.Finance.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Population\Novolis.Economy.Population.csproj" />
+    <ProjectReference Include="..\Novolis.Economy.Logistics\Novolis.Economy.Logistics.csproj" />
+  </ItemGroup>
+</Project>

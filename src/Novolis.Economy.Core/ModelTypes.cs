@@ -120,7 +120,9 @@ public sealed record FinancialClaim(
     AssetAmount Principal,
     decimal InterestRatePerPeriod,
     int RemainingPeriods,
-    LoanStatus Status);
+    LoanStatus Status,
+    decimal AccruedInterest = 0m,
+    AssetAmount? OriginalPrincipal = null);
 
 /// <summary>Capacity to create debt (SPEC §12).</summary>
 public sealed record CreditFacility(

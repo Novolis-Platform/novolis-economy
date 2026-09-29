@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Novolis.Economy.Integration.Simulation</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Novolis.Economy.Abstractions/Novolis.Economy.Abstractions.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Models.SmallOpenRegionalTrade/Novolis.Economy.Models.SmallOpenRegionalTrade.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Models.DeterministicBounded/Novolis.Economy.Models.DeterministicBounded.csproj" />
+  </ItemGroup>
+</Project>

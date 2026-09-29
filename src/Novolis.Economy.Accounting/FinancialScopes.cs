@@ -19,4 +19,12 @@ public abstract record FinancialScope
 
   /// <summary>Explicit group of legal entities.</summary>
   public sealed record Group(IReadOnlySet<LegalEntityId> Ids) : FinancialScope;
+
+  /// <summary>Named sector backed by an explicit set of legal entities.</summary>
+  public sealed record Sector(
+    string Name,
+    IReadOnlySet<LegalEntityId> Ids) : FinancialScope;
+
+  /// <summary>All entities belonging to the explicit external sector.</summary>
+  public sealed record ExternalSector : FinancialScope;
 }

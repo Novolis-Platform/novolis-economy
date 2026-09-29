@@ -1,4 +1,5 @@
 using Novolis.Economy;
+using Novolis.Economy.Abstractions;
 using Novolis.Economy.Agents;
 
 namespace Novolis.Economy.Simulation;
@@ -15,10 +16,6 @@ public sealed class EconomySimulation : IEconomySimulation
     : this(seed, new EconomyWorld(), PhasePipeline.CreateDefault())
   {
   }
-
-  /// <summary>Creates a run using the documented flagship model.</summary>
-  public static EconomySimulation CreateDefault(ulong seed) =>
-    FromModel(seed, Models.SimulationModels.Default);
 
   /// <summary>Creates a simulation with a prepared world.</summary>
   public EconomySimulation(ulong seed, EconomyWorld world)
@@ -37,17 +34,16 @@ public sealed class EconomySimulation : IEconomySimulation
     ulong seed,
     EconomyWorld world,
     PhasePipeline pipeline,
-    SimulationModelIdentity? modelIdentity = null,
+    EconomicModelIdentity? modelIdentity = null,
     Bounded.BoundedPeriodEngine? periodEngine = null,
-    IReadOnlyList<IEconomicAgent>? agents = null,
-    SimulationModelDefinition? modelDefinition = null)
+    IReadOnlyList<IEconomicAgent>? agents = null)
   {
     ArgumentNullException.ThrowIfNull(world);
     ArgumentNullException.ThrowIfNull(pipeline);
     world.CoreState = world.CoreState with { SimulationSeed = seed };
     CoreCashBridge.ReconcileAll(world);
     CoreInventoryBridge.ReconcileAll(world);
-    State = new SimulationState(seed, world, modelIdentity, modelDefinition);
+    State = new SimulationState(seed, world, modelIdentity);
     _pipeline = pipeline;
     _random = new DeterministicRandom(seed);
     _context = new SimulationContext(
@@ -59,49 +55,11 @@ public sealed class EconomySimulation : IEconomySimulation
       this);
   }
 
-  /// <summary>
-  /// Creates a prepared world with an explicit Simulation model definition.
-  /// The model supplies the period runner, actor selection, and reproducibility
-  /// metadata while the prepared world remains the host's initial state.
-  /// </summary>
-  public EconomySimulation(
-    ulong seed,
-    EconomyWorld world,
-    SimulationModelDefinition model)
-    : this(
-      seed,
-      world,
-      model.CreatePipeline(world),
-      model.Identity,
-      model.CreatePeriodEngine(world),
-      model.CreateAgents(world, seed),
-      model)
-  {
-  }
-
-  /// <summary>Creates a simulation from a complete model composition.</summary>
-  public static EconomySimulation FromModel(
-    ulong seed,
-    SimulationModelDefinition model)
-  {
-    ArgumentNullException.ThrowIfNull(model);
-    var world = model.CreateWorld(seed);
-    var pipeline = model.CreatePipeline(world);
-    return new EconomySimulation(
-      seed,
-      world,
-      pipeline,
-      model.Identity,
-      model.CreatePeriodEngine(world),
-      model.CreateAgents(world, seed),
-      model);
-  }
-
   /// <inheritdoc />
   public SimulationState State { get; }
 
   /// <summary>Complete model selected for this simulation.</summary>
-  public SimulationModelIdentity ModelIdentity => State.ModelIdentity;
+  public EconomicModelIdentity ModelIdentity => State.ModelIdentity;
 
   /// <summary>Named deterministic entropy for agents and phases.</summary>
   public SimulationEntropy Entropy => State.Entropy;
