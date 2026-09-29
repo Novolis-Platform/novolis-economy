@@ -100,6 +100,45 @@ public sealed class SimulationModelIntegrationTests
         await Assert.That(simulationRun.Transactions).IsNotEmpty();
     }
 
+    [Test]
+    public async Task SimulationConsumerCanPersistRunEvidenceAndRestoreSnapshot()
+    {
+        var model = new SmallOpenRegionalTradeModel();
+        var scenario = SmallOpenRegionalTradeScenario.Baseline;
+        var run = EconomicModelRunner.Run(
+            new EconomicModelRunRequest(model, scenario, Seed: 42, Ticks: 2));
+
+        var runRecord = EconomicRunStore.Deserialize(
+            EconomicRunStore.Serialize(run));
+        var registry = new EconomicModelCodecRegistry();
+        registry.Register(new SmallOpenRegionalTradeJsonCodec());
+        var store = new EconomicSnapshotStore(registry);
+        var snapshot = store.Capture(
+            new SmallOpenRegionalTradeJsonCodec(),
+            model,
+            scenario,
+            run.State,
+            new EconomicSnapshotCapture(
+                42,
+                run.State.Tick,
+                ((SmallOpenRegionalTradeState)run.State).CoreState.Period,
+                new Dictionary<long, IReadOnlyList<IEconomicModelCommand>>(),
+                run.Observations,
+                run.Transactions));
+        var restored = store.Restore(store.Serialize(snapshot));
+        var restoredState = (SmallOpenRegionalTradeState)restored.State;
+        var restoredFinancials = AccountingQuery.Project(
+            restoredState.CoreState,
+            new FinancialScope.Group(
+                restoredState.CoreState.Entities.Keys.ToHashSet()));
+
+        await Assert.That(runRecord.Manifest.FinalStateFingerprint)
+            .IsEqualTo(run.State.Fingerprint);
+        await Assert.That(restored.State.Fingerprint)
+            .IsEqualTo(run.State.Fingerprint);
+        await Assert.That(restoredFinancials.IsBalanced).IsTrue();
+    }
+
     private static EconomicTickContext CreateContext(
         long tick,
         ulong seed,

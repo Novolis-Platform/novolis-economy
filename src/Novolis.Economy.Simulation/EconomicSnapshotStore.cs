@@ -155,7 +155,9 @@ public sealed class EconomicSnapshotStore
         if (string.IsNullOrWhiteSpace(document.Model.Id) ||
             string.IsNullOrWhiteSpace(document.Model.Version) ||
             string.IsNullOrWhiteSpace(document.ScenarioId) ||
-            string.IsNullOrWhiteSpace(document.ScenarioVersion))
+            string.IsNullOrWhiteSpace(document.ScenarioVersion) ||
+            string.IsNullOrWhiteSpace(document.SpecificationHash) ||
+            string.IsNullOrWhiteSpace(document.CommandHash))
         {
             throw new InvalidDataException(
                 "Economic snapshots require model and scenario identities.");

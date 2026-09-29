@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/Novolis.Economy.Abstractions/Novolis.Economy.Abstractions.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Accounting/Novolis.Economy.Accounting.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Core/Novolis.Economy.Core.csproj" />
+    <ProjectReference Include="../../src/Novolis.Economy.Simulation/Novolis.Economy.Simulation.csproj" />
     <ProjectReference Include="../../src/Novolis.Economy.Models.SmallOpenRegionalTrade/Novolis.Economy.Models.SmallOpenRegionalTrade.csproj" />
   </ItemGroup>
 </Project>

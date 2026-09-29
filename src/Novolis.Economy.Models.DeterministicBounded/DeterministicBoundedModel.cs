@@ -2,6 +2,7 @@ using Novolis.Economy.Abstractions;
 using Novolis.Economy.Core;
 using Novolis.Economy.Core.Finance;
 using Novolis.Economy.Core.Holdings;
+using Novolis.Economy.Core.Invariants;
 using Novolis.Economy.Core.Production;
 using Novolis.Economy.Core.Transactions;
 using Novolis.Economy.Primitives;

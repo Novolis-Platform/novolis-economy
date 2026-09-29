@@ -38,7 +38,17 @@ public sealed class DeterministicBoundedJsonCodec : IEconomicModelCodec
             throw new InvalidDataException(
                 "DeterministicBounded does not accept model commands.");
 
-        return new EconomicModelSnapshotDocument(
+        var specification = EconomicJson.ToElement(
+            typedModel.Specification,
+            Options);
+        var scenarioPayload = EconomicJson.ToElement(
+            typedScenario,
+            Options);
+        var statePayload = EconomicJson.ToElement(
+            typedState,
+            Options);
+        var commands = Array.Empty<EconomicCommandDocument>();
+        var document = new EconomicModelSnapshotDocument(
             EconomicPersistenceSchema.CurrentFormatVersion,
             typedModel.Identity,
             typedScenario.Id,
@@ -47,12 +57,19 @@ public sealed class DeterministicBoundedJsonCodec : IEconomicModelCodec
             typedState.Tick,
             capture.Period,
             typedState.Fingerprint,
-            EconomicJson.ToElement(typedModel.Specification, Options),
-            EconomicJson.ToElement(typedScenario, Options),
-            EconomicJson.ToElement(typedState, Options),
-            Array.Empty<EconomicCommandDocument>(),
+            specification,
+            scenarioPayload,
+            statePayload,
+            commands,
             capture.Observations,
             capture.Transactions);
+        return document with
+        {
+            SpecificationHash = EconomicJson.HashCanonical(
+                typedModel.Specification,
+                Options),
+            CommandHash = EconomicJson.HashCanonical(commands, Options)
+        };
     }
 
     /// <inheritdoc />
@@ -80,8 +97,17 @@ public sealed class DeterministicBoundedJsonCodec : IEconomicModelCodec
             state.Scenario != scenario ||
             document.ScenarioId != scenario.Id ||
             document.ScenarioVersion != scenario.Version ||
-            document.Seed != state.Authority.SimulationSeed ||
+            (state.Tick > 0 &&
+             document.Seed != state.Authority.SimulationSeed) ||
             document.Period != state.Authority.Period ||
+            !string.Equals(
+                document.SpecificationHash,
+                EconomicJson.HashCanonical(specification, Options),
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                document.CommandHash,
+                EconomicJson.HashCanonical(document.Commands, Options),
+                StringComparison.Ordinal) ||
             state.Fingerprint != document.StateFingerprint)
         {
             throw new InvalidDataException(

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -49,7 +50,14 @@ public sealed record EconomicModelSnapshotDocument(
     JsonElement State,
     IReadOnlyList<EconomicCommandDocument> Commands,
     IReadOnlyList<EconomicObservation> Observations,
-    IReadOnlyList<EconomicTransitionReceipt> Transactions);
+    IReadOnlyList<EconomicTransitionReceipt> Transactions)
+{
+    /// <summary>Hash of the canonical typed specification payload.</summary>
+    public string? SpecificationHash { get; init; }
+
+    /// <summary>Hash of the canonical model command documents.</summary>
+    public string? CommandHash { get; init; }
+}
 
 /// <summary>Restored typed model and state returned by a model codec.</summary>
 public sealed record EconomicModelRestore(
@@ -125,6 +133,17 @@ public static class EconomicJson
         }
 
         return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    /// <summary>Hashes the canonical representation of a persisted value.</summary>
+    public static string HashCanonical<T>(
+        T value,
+        JsonSerializerOptions? options = null)
+    {
+        var json = SerializeCanonical(value, options);
+        return Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes(json)))
+            .ToLowerInvariant();
     }
 
     /// <summary>Throws when a document does not use the supported schema.</summary>

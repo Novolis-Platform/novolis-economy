@@ -2,6 +2,7 @@ using Novolis.Economy.Accounting;
 using Novolis.Economy.Abstractions;
 using Novolis.Economy.Core;
 using Novolis.Economy.Models.SmallOpenRegionalTrade;
+using Novolis.Economy.Simulation;
 
 namespace Novolis.Economy.Integration.Research;
 
@@ -19,7 +20,8 @@ public sealed class ResearchModelIntegrationTests
 
         var projection = AccountingQuery.Project(
             next.CoreState,
-            new FinancialScope.EntityKind(LegalEntityKind.Firm));
+            new FinancialScope.EntityKind(
+                Novolis.Economy.Core.LegalEntityKind.Firm));
 
         await Assert.That(projection.EntityBooks).IsNotEmpty();
         await Assert.That(projection.Transactions).IsNotEmpty();
@@ -54,5 +56,44 @@ public sealed class ResearchModelIntegrationTests
             .IsEqualTo(restrictedResult.Model.Version);
         await Assert.That(openResult.Fingerprint)
             .IsNotEqualTo(restrictedResult.Fingerprint);
+    }
+
+    [Test]
+    public async Task ResearchConsumerCanRunValidationAndExportTheReport()
+    {
+        var report = EconomicValidationRunner.Validate(
+            new EconomicValidationRequest(
+                new SmallOpenRegionalTradeModel(),
+                SmallOpenRegionalTradeScenario.Baseline,
+                Seed: 19,
+                Ticks: 3,
+                Plan: new CalibrationPlan(
+                    "research-baseline",
+                    "1",
+                    [
+                        new CalibrationTarget(
+                            "invariants",
+                            "core-invariants",
+                            "boolean",
+                            CalibrationTargetKind.InternalInvariant,
+                            "small-open-regional-trade-3",
+                            "implementation",
+                            TargetValue: 1m),
+                        new CalibrationTarget(
+                            "clearing",
+                            "food-market-clearing-rate",
+                            "ratio",
+                            CalibrationTargetKind.Empirical,
+                            "small-open-regional-trade-3",
+                            "illustrative",
+                            Minimum: 0m,
+                            Maximum: 1m)])));
+
+        var restored = EconomicRunStore.DeserializeValidationReport(
+            EconomicRunStore.Serialize(report));
+
+        await Assert.That(restored.Passed).IsTrue();
+        await Assert.That(restored.Measurements).Count().IsEqualTo(2);
+        await Assert.That(restored.SpecificationHash).IsNotEmpty();
     }
 }

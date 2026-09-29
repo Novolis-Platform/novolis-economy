@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Novolis.Economy.Abstractions;
 using Novolis.Economy.Models.DeterministicBounded;
 using Novolis.Economy.Models.SmallOpenRegionalTrade;
@@ -106,6 +107,38 @@ public sealed class EconomicSnapshotPersistenceTests
             await Assert.That(restoredSuffixJournalIds[index])
                 .IsEqualTo(originalSuffixJournalIds[index]);
         }
+
+        var alteredSpecification = document with
+        {
+            Specification = EconomicJson.ToElement(
+                model.Specification with { FoodPrice = 11m },
+                EconomicJson.CreateOptions())
+        };
+        var alteredSpecificationAct = () =>
+            store.Restore(store.Serialize(alteredSpecification));
+        await Assert.That(alteredSpecificationAct).Throws<InvalidDataException>();
+
+        var alteredCommand = document with
+        {
+            Commands =
+            [
+                new EconomicCommandDocument(
+                    1,
+                    "purchase-food",
+                    EconomicJson.ToElement(
+                        new PurchaseFoodCommand(999m),
+                        EconomicJson.CreateOptions())),
+                new EconomicCommandDocument(
+                    1,
+                    "draw-working-capital",
+                    EconomicJson.ToElement(
+                        new DrawWorkingCapitalCommand(100m),
+                        EconomicJson.CreateOptions()))
+            ]
+        };
+        var alteredCommandAct = () =>
+            store.Restore(store.Serialize(alteredCommand));
+        await Assert.That(alteredCommandAct).Throws<InvalidDataException>();
     }
 
     [Test]
@@ -183,5 +216,17 @@ public sealed class EconomicSnapshotPersistenceTests
         var act = () => store.Restore(store.Serialize(invalid));
 
         await Assert.That(act).Throws<InvalidDataException>();
+    }
+
+    [Test]
+    public async Task SnapshotStoreRejectsTruncatedJson()
+    {
+        var registry = new EconomicModelCodecRegistry();
+        registry.Register(new SmallOpenRegionalTradeJsonCodec());
+        var store = new EconomicSnapshotStore(registry);
+
+        var act = () => store.Restore("{\"formatVersion\":\"economy.snapshot.v1\"");
+
+        await Assert.That(act).Throws<JsonException>();
     }
 }
