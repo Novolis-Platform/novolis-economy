@@ -84,11 +84,19 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
   /// <inheritdoc />
   public override IReadOnlyList<string> AgentProfileIds =>
     Trade.EnableRuleBasedAgents
-      ? ["firms.rule-based", "carriers.rule-based"]
+      ? Trade.EnableDeterministicFuzzing
+        ? ["firms.rule-based-fuzzed", "carriers.rule-based-fuzzed"]
+        : ["firms.rule-based", "carriers.rule-based"]
       : ["agents.disabled"];
 
   /// <inheritdoc />
   public override object ReproducibilityDescriptor => Trade;
+
+  /// <inheritdoc />
+  public override Bounded.BoundedPeriodEngine CreatePeriodEngine(EconomyWorld world) =>
+    new(
+      [new Bounded.AdvancePeriodBoundaryStep()],
+      Specification);
 
   /// <inheritdoc />
   public override EconomyWorld CreateWorld(ulong seed)
@@ -112,16 +120,16 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
     world.MonetaryClosure = Trade.Closure;
     AddWorkingCapitalFacility(world);
 
-    // Explicit external-sector flows: import fuel and export food. These are
-    // settled against the registered external ledger in AcquireInputsPhase.
+    // Explicit recurring external-sector flows: import fuel and export food.
+    // AcquireInputsPhase schedules one copy at the start of each model period.
     var northStorage = InventoryLocationId.From(GuidUtility(North, 40));
-    world.PendingProcurement.Add(new PlaceProcurementOrder(
+    world.RecurringProcurement.Add(new PlaceProcurementOrder(
       FirmId.From(Producer),
       northStorage,
       ProductId.From(Fuel),
       Quantity.From(Trade.ImportCapacityPerPeriod),
       Money.From(Trade.WorldPrice)));
-    world.PendingExports.Add(new PlaceExportOrder(
+    world.RecurringExports.Add(new PlaceExportOrder(
       FirmId.From(Producer),
       northStorage,
       ProductId.From(Food),
@@ -177,9 +185,7 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
 
   private void AddRegions(EconomyWorldBuilder builder)
   {
-    var capacity = Math.Clamp(Trade.RegionCount, 1, 3);
-    var regions = new[] { North, Central, South }.Take(capacity);
-    foreach (var region in regions)
+    foreach (var region in ActiveRegions())
     {
       builder.AddRegion(GeographicAreaId.From(region), 2_000, 100);
     }
@@ -195,8 +201,7 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
       "External Sector",
       Money.From(Trade.ExternalOpeningCash));
 
-    var regions = new[] { North, Central, South };
-    foreach (var region in regions)
+    foreach (var region in ActiveRegions())
     {
       var area = GeographicAreaId.From(region);
       var storage = InventoryLocationId.From(GuidUtility(region, 40));
@@ -232,6 +237,15 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
         facility,
         ProductId.From(Food),
         Money.From(10m));
+      builder.AddRoute(new FreightRoute(
+        FreightRouteId.From(GuidUtility(region, 45)),
+        storage,
+        retail,
+        TransitHours: 1,
+        Capacity: Quantity.From(TradeCapacity(region))));
+      builder.SetRestockRoute(
+        facility,
+        FreightRouteId.From(GuidUtility(region, 45)));
       builder.AddInventory(
         FirmId.From(Producer),
         storage,
@@ -262,37 +276,49 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
 
   private void AddHousehold(EconomyWorldBuilder builder)
   {
+    var regions = ActiveRegions();
+    var householdRegion = regions[Math.Min(1, regions.Count - 1)];
     builder.AddCohort(new ConsumerCohort(
       ConsumerCohortId.From(Household),
       new PopulationCount(Trade.HouseholdCount),
       Money.From(100m),
       new PreferenceProfile(
-        ImmutableArray<CategoryPreference>.Empty,
+        ImmutableArray.Create(
+          new CategoryPreference(
+            ProductCategoryId.From(GuidUtility(Food, 1)),
+            1m)),
         PriceSensitivity: 0.8m,
         QualitySensitivity: 0m,
         BrandLoyalty: 0m),
-      GeographicAreaId.From(Central),
+      GeographicAreaId.From(householdRegion),
       HouseholdProductivityKind.Mean,
       FirmId.From(Household)));
   }
 
-  private static void AddTransport(EconomyWorldBuilder builder)
+  private void AddTransport(EconomyWorldBuilder builder)
   {
-    var northLocation = InventoryLocationId.From(GuidUtility(North, 40));
-    var centralLocation = InventoryLocationId.From(GuidUtility(Central, 40));
-    var southLocation = InventoryLocationId.From(GuidUtility(South, 40));
-    var northHub = TransportHubId.From(GuidUtility(North, 50));
-    var centralHub = TransportHubId.From(GuidUtility(Central, 50));
-    var southHub = TransportHubId.From(GuidUtility(South, 50));
-    builder
-      .AddHub(new TransportHub(northHub, northLocation, "North", 1, 2), RegionId.From(North))
-      .AddHub(new TransportHub(centralHub, centralLocation, "Central", 1, 2), RegionId.From(Central))
-      .AddHub(new TransportHub(southHub, southLocation, "South", 1, 2), RegionId.From(South));
+    var regions = ActiveRegions();
+    var hubs = regions
+      .Select(region => TransportHubId.From(GuidUtility(region, 50)))
+      .ToArray();
+    foreach (var region in regions)
+    {
+      var location = InventoryLocationId.From(GuidUtility(region, 40));
+      builder.AddHub(
+        new TransportHub(
+          TransportHubId.From(GuidUtility(region, 50)),
+          location,
+          region == North ? "North" : region == Central ? "Central" : "South",
+          1,
+          2),
+        RegionId.From(region));
+    }
 
-    AddCorridor(builder, northHub, centralHub, GuidUtility(North, 51));
-    AddCorridor(builder, centralHub, northHub, GuidUtility(North, 52));
-    AddCorridor(builder, centralHub, southHub, GuidUtility(South, 51));
-    AddCorridor(builder, southHub, centralHub, GuidUtility(South, 52));
+    for (var i = 1; i < hubs.Length; i++)
+    {
+      AddCorridor(builder, hubs[0], hubs[i], GuidUtility(regions[0], 51 + i));
+      AddCorridor(builder, hubs[i], hubs[0], GuidUtility(regions[i], 51 + i));
+    }
 
     var vehicle = new VehicleClass(
       VehicleClassId.From(GuidUtility(Carrier, 50)),
@@ -320,6 +346,11 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
 
   private decimal TradeCapacity(Guid region) =>
     Trade.FoodProductionPerHour * (region == Central ? 1.5m : 1m);
+
+  private IReadOnlyList<Guid> ActiveRegions() =>
+    new[] { North, Central, South }
+      .Take(Math.Clamp(Trade.RegionCount, 1, 3))
+      .ToArray();
 
   private static Guid GuidUtility(Guid source, int salt)
   {
@@ -369,7 +400,8 @@ public sealed class SmallOpenRegionalTradeModel : SimulationModelDefinition
             MinStock: 10m,
             BuyLimitPrice: Trade.WorldPrice,
             SellPrice: Trade.WorldPrice,
-            AllowProcurement: true))),
+            AllowProcurement: true),
+          PriceJitter: Trade.EnableDeterministicFuzzing ? 0.04m : 0m)),
       new CarrierFirmAgent(
         FirmId.From(Carrier),
         new CarrierFirmAgentPolicy(

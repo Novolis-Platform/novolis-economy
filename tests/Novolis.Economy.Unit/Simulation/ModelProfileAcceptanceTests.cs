@@ -54,6 +54,79 @@ public sealed class ModelProfileAcceptanceTests
   }
 
   [Test]
+  public async Task SmallOpenRegionalTrade_Produces_Retail_Stock_And_Consumer_Sales()
+  {
+    var simulation = EconomySimulation.FromModel(
+      42,
+      SimulationModels.SmallOpenRegionalTrade());
+
+    await simulation.AdvanceAsync(SimulationDuration.FromHours(3));
+
+    await Assert.That(simulation.State.Events.OfType<GoodsSold>())
+      .IsNotEmpty();
+    await Assert.That(simulation.State.World.ExternalTrade.ImportsByProduct)
+      .IsNotEmpty();
+  }
+
+  [Test]
+  public async Task SmallOpenRegionalTrade_ClosedClosure_Rejects_ExternalOrders()
+  {
+    var simulation = EconomySimulation.FromModel(
+      42,
+      new SmallOpenRegionalTradeModel(
+        new SmallOpenRegionalTradeSpecification(
+          Closure: MonetaryClosure.Closed)));
+
+    await simulation.AdvanceAsync(SimulationDuration.OneHour);
+
+    await Assert.That(simulation.State.World.ExternalTrade.ImportsPaid)
+      .IsEqualTo(Money.Zero);
+    await Assert.That(simulation.State.World.ExternalTrade.ExportsReceived)
+      .IsEqualTo(Money.Zero);
+    await Assert.That(simulation.State.Events.OfType<ProcurementFilled>())
+      .IsEmpty();
+  }
+
+  [Test]
+  public async Task SmallOpenRegionalTrade_RegionCount_Bounds_All_Regional_Objects()
+  {
+    var simulation = EconomySimulation.FromModel(
+      42,
+      new SmallOpenRegionalTradeModel(
+        new SmallOpenRegionalTradeSpecification(RegionCount: 1)));
+
+    await Assert.That(simulation.State.World.Regions.Count).IsEqualTo(1);
+    await Assert.That(simulation.State.World.Hubs.Count).IsEqualTo(1);
+    await Assert.That(simulation.State.World.Facilities.Count).IsEqualTo(1);
+    await Assert.That(simulation.State.World.Cohorts).IsNotEmpty();
+  }
+
+  [Test]
+  public async Task SmallOpenRegionalTrade_Uses_One_Operational_Period_Close()
+  {
+    var simulation = EconomySimulation.FromModel(
+      42,
+      SimulationModels.SmallOpenRegionalTrade());
+
+    await simulation.AdvanceAsync(SimulationDuration.FromHours(48));
+
+    await Assert.That(simulation.State.World.CoreState.Period).IsEqualTo(2);
+  }
+
+  [Test]
+  public async Task SmallOpenRegionalTrade_Repeats_External_Schedules_Per_Period()
+  {
+    var simulation = EconomySimulation.FromModel(
+      42,
+      SimulationModels.SmallOpenRegionalTrade());
+
+    await simulation.AdvanceAsync(SimulationDuration.FromHours(25));
+
+    await Assert.That(simulation.State.World.ExternalTrade.ImportsPaid.Amount)
+      .IsGreaterThan(1_000m);
+  }
+
+  [Test]
   public async Task SmallOpenRegionalTrade_Is_Replayable_For_The_Same_Seed()
   {
     var left = EconomySimulation.FromModel(

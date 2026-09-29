@@ -232,6 +232,12 @@ public sealed class EconomyWorld : IAgentWorldView
   /// <summary>Pending export orders (exogenous demand).</summary>
   public List<PlaceExportOrder> PendingExports { get; } = [];
 
+  /// <summary>Procurement orders scheduled at the start of each accounting period.</summary>
+  public List<PlaceProcurementOrder> RecurringProcurement { get; } = [];
+
+  /// <summary>Export orders scheduled at the start of each accounting period.</summary>
+  public List<PlaceExportOrder> RecurringExports { get; } = [];
+
   /// <summary>Pending shipment commands.</summary>
   public List<IssueShipment> PendingShipments { get; } = [];
 
@@ -484,6 +490,64 @@ public sealed class EconomyWorld : IAgentWorldView
     var hash = offset;
     hash = (hash ^ Inventory.Fingerprint()) * prime;
     hash = (hash ^ MarketBook.Fingerprint()) * prime;
+    hash = (hash ^ (ulong)MonetaryClosure) * prime;
+    if (ExternalSectorFirmId is { } externalSector)
+    {
+      hash = (hash ^ HashGuid(externalSector.Value)) * prime;
+    }
+
+    foreach (var b in decimal.GetBits(ExternalTrade.ImportsPaid.Amount))
+    {
+      hash = (hash ^ (ulong)(uint)b) * prime;
+    }
+
+    foreach (var b in decimal.GetBits(ExternalTrade.ExportsReceived.Amount))
+    {
+      hash = (hash ^ (ulong)(uint)b) * prime;
+    }
+
+    foreach (var (product, quantity) in ExternalTrade.ImportsByProduct
+               .OrderBy(kv => kv.Key.Value))
+    {
+      hash = (hash ^ HashGuid(product.Value)) * prime;
+      foreach (var b in decimal.GetBits(quantity.Value))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    foreach (var (product, quantity) in ExternalTrade.ExportsByProduct
+               .OrderBy(kv => kv.Key.Value))
+    {
+      hash = (hash ^ HashGuid(product.Value)) * prime;
+      foreach (var b in decimal.GetBits(quantity.Value))
+      {
+        hash = (hash ^ (ulong)(uint)b) * prime;
+      }
+    }
+
+    foreach (var order in RecurringProcurement
+               .OrderBy(order => order.BuyerFirmId.Value)
+               .ThenBy(order => order.ProductId.Value))
+    {
+      hash = (hash ^ HashGuid(order.BuyerFirmId.Value)) * prime;
+      hash = (hash ^ HashGuid(order.Destination.Value)) * prime;
+      hash = (hash ^ HashGuid(order.ProductId.Value)) * prime;
+      hash = (hash ^ HashDecimal(order.Quantity.Value)) * prime;
+      hash = (hash ^ HashDecimal(order.MaxUnitPrice.Amount)) * prime;
+    }
+
+    foreach (var order in RecurringExports
+               .OrderBy(order => order.SellerFirmId.Value)
+               .ThenBy(order => order.ProductId.Value))
+    {
+      hash = (hash ^ HashGuid(order.SellerFirmId.Value)) * prime;
+      hash = (hash ^ HashGuid(order.Origin.Value)) * prime;
+      hash = (hash ^ HashGuid(order.ProductId.Value)) * prime;
+      hash = (hash ^ HashDecimal(order.Quantity.Value)) * prime;
+      hash = (hash ^ HashDecimal(order.MinUnitPrice.Amount)) * prime;
+    }
+
     foreach (var ledger in Ledgers.Values.OrderBy(l => l.FirmId.Value))
     {
       hash = (hash ^ ledger.Fingerprint()) * prime;
@@ -588,6 +652,18 @@ public sealed class EconomyWorld : IAgentWorldView
     foreach (var b in System.Text.Encoding.UTF8.GetBytes(value))
     {
       hash = (hash ^ b) * prime;
+    }
+
+    return hash;
+  }
+
+  private static ulong HashDecimal(decimal value)
+  {
+    var hash = 14695981039346656037UL;
+    const ulong prime = 1099511628211UL;
+    foreach (var b in decimal.GetBits(value))
+    {
+      hash = (hash ^ (ulong)(uint)b) * prime;
     }
 
     return hash;

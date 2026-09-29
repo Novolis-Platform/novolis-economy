@@ -44,6 +44,9 @@ public sealed class EconomySimulation : IEconomySimulation
   {
     ArgumentNullException.ThrowIfNull(world);
     ArgumentNullException.ThrowIfNull(pipeline);
+    world.CoreState = world.CoreState with { SimulationSeed = seed };
+    CoreCashBridge.ReconcileAll(world);
+    CoreInventoryBridge.ReconcileAll(world);
     State = new SimulationState(seed, world, modelIdentity, modelDefinition);
     _pipeline = pipeline;
     _random = new DeterministicRandom(seed);
@@ -54,8 +57,6 @@ public sealed class EconomySimulation : IEconomySimulation
       periodEngine ?? Bounded.DefaultBoundedPeriodPipeline.CreateEngine(),
       agents,
       this);
-    world.CoreState = world.CoreState with { SimulationSeed = seed };
-    CoreInventoryBridge.ReconcileAll(world);
   }
 
   /// <summary>

@@ -20,6 +20,13 @@ public sealed class AcquireInputsPhase : ISimulationPhase
     var world = context.State.World;
     var hour = context.State.Clock;
 
+    if (world.Policy.PeriodHours > 0 &&
+        hour.HourIndex % world.Policy.PeriodHours == 0)
+    {
+      world.PendingProcurement.AddRange(world.RecurringProcurement);
+      world.PendingExports.AddRange(world.RecurringExports);
+    }
+
     foreach (var order in world.PendingProcurement.OrderBy(o => o.BuyerFirmId.Value).ThenBy(o => o.ProductId.Value))
     {
       if (!world.Ledgers.TryGetValue(order.BuyerFirmId, out var ledger))
@@ -30,11 +37,8 @@ public sealed class AcquireInputsPhase : ISimulationPhase
       var externalLedger = world.ExternalSectorFirmId is { } externalId
         ? world.Ledgers.GetValueOrDefault(externalId)
         : null;
-      if (world.MonetaryClosure == MonetaryClosure.ExternalSector &&
-          externalLedger is null)
+      if (!CanSettleExternalOrder(world, externalLedger))
       {
-        // An open-sector model must declare the counterparty rather than
-        // silently minting inventory or destroying the buyer's payment.
         continue;
       }
 
@@ -67,15 +71,16 @@ public sealed class AcquireInputsPhase : ISimulationPhase
 
       spend = Money.From(order.MaxUnitPrice.Amount * accepted.Value);
       LedgerEngine.PostCashPurchase(ledger, spend, hour.Date);
-      if (externalLedger is not null)
+      if (world.MonetaryClosure == MonetaryClosure.ExternalSector &&
+          externalLedger is not null)
       {
         LedgerEngine.PostCashSale(externalLedger, spend, Money.Zero, hour.Date);
-        world.ExternalTrade.ImportsPaid += spend;
-        world.ExternalTrade.ImportsByProduct[order.ProductId] =
-          Quantity.From(
-            world.ExternalTrade.ImportsByProduct.GetValueOrDefault(order.ProductId).Value +
-            accepted.Value);
       }
+      world.ExternalTrade.ImportsPaid += spend;
+      world.ExternalTrade.ImportsByProduct[order.ProductId] =
+        Quantity.From(
+          world.ExternalTrade.ImportsByProduct.GetValueOrDefault(order.ProductId).Value +
+          accepted.Value);
       context.State.AppendEvent(new ProcurementFilled(
         hour, order.BuyerFirmId, order.ProductId, accepted, order.MaxUnitPrice));
       context.State.AppendEvent(new InventoryTransferred(
@@ -94,8 +99,7 @@ public sealed class AcquireInputsPhase : ISimulationPhase
       var externalLedger = world.ExternalSectorFirmId is { } externalId
         ? world.Ledgers.GetValueOrDefault(externalId)
         : null;
-      if (world.MonetaryClosure == MonetaryClosure.ExternalSector &&
-          externalLedger is null)
+      if (!CanSettleExternalOrder(world, externalLedger))
       {
         continue;
       }
@@ -122,15 +126,16 @@ public sealed class AcquireInputsPhase : ISimulationPhase
 
       var revenue = Money.From(order.MinUnitPrice.Amount * qty);
       LedgerEngine.PostCashSale(ledger, revenue, cogs, hour.Date);
-      if (externalLedger is not null)
+      if (world.MonetaryClosure == MonetaryClosure.ExternalSector &&
+          externalLedger is not null)
       {
         LedgerEngine.PostCashPurchase(externalLedger, revenue, hour.Date);
-        world.ExternalTrade.ExportsReceived += revenue;
-        world.ExternalTrade.ExportsByProduct[order.ProductId] =
-          Quantity.From(
-            world.ExternalTrade.ExportsByProduct.GetValueOrDefault(order.ProductId).Value +
-            quantity.Value);
       }
+      world.ExternalTrade.ExportsReceived += revenue;
+      world.ExternalTrade.ExportsByProduct[order.ProductId] =
+        Quantity.From(
+          world.ExternalTrade.ExportsByProduct.GetValueOrDefault(order.ProductId).Value +
+          quantity.Value);
       context.State.AppendEvent(new ExportFilled(
         hour, order.SellerFirmId, order.ProductId, quantity, order.MinUnitPrice, revenue));
       context.State.AppendEvent(new InventoryTransferred(
@@ -284,4 +289,15 @@ public sealed class AcquireInputsPhase : ISimulationPhase
     world.PendingPlanRepositions.Clear();
     return ValueTask.CompletedTask;
   }
+
+  private static bool CanSettleExternalOrder(
+    EconomyWorld world,
+    FirmLedger? externalLedger) =>
+    world.MonetaryClosure switch
+    {
+      MonetaryClosure.Open => true,
+      MonetaryClosure.ExternalSector => externalLedger is not null,
+      MonetaryClosure.Closed => false,
+      _ => false
+    };
 }

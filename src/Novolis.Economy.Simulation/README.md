@@ -25,6 +25,14 @@ Registration is strict by default. Hosts that deliberately want game-friendly
 implicit Core entities, assets, or regions must pass
 `RegistrationMode.Implicit` to `EconomyWorld` or `EconomyWorldBuilder`.
 
+`SmallOpenRegionalTradeModel` is the flagship operational composition. It
+creates bounded regional capacity, retail restocking, cohort food demand,
+explicit external-sector procurement/export schedules, a working-capital
+facility, and replayable rules-based firm/carrier actors. Its period boundary
+advances Core's period marker after hourly effects have already been applied;
+the deterministic bounded profile is the model that runs the full sixteen-step
+teaching pipeline.
+
 Does **not** reference `Novolis.Simulation.*` (spatial stack).
 
 ## Install

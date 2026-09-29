@@ -184,7 +184,42 @@ public sealed class SimulationState
     hash = (hash ^ (ulong)_events.Count) * prime;
     hash = (hash ^ _lastRngState) * prime;
     hash = (hash ^ _cachedWorldFingerprint) * prime;
+    hash = (hash ^ (ulong)_agentDecisionTraces.Count) * prime;
+    foreach (var trace in _agentDecisionTraces)
+    {
+      hash = (hash ^ (ulong)trace.Hour.HourIndex) * prime;
+      hash = (hash ^ HashGuid(trace.FirmId.Value)) * prime;
+      hash = (hash ^ HashString(trace.AgentType)) * prime;
+      hash = (hash ^ HashString(trace.Decision)) * prime;
+      hash = (hash ^ trace.RandomState) * prime;
+    }
     _hash = hash;
+  }
+
+  private static ulong HashGuid(Guid value)
+  {
+    const ulong offset = 14695981039346656037UL;
+    const ulong prime = 1099511628211UL;
+    var hash = offset;
+    foreach (var b in value.ToByteArray())
+    {
+      hash = (hash ^ b) * prime;
+    }
+
+    return hash;
+  }
+
+  private static ulong HashString(string value)
+  {
+    const ulong offset = 14695981039346656037UL;
+    const ulong prime = 1099511628211UL;
+    var hash = offset;
+    foreach (var b in System.Text.Encoding.UTF8.GetBytes(value))
+    {
+      hash = (hash ^ b) * prime;
+    }
+
+    return hash;
   }
 }
 
