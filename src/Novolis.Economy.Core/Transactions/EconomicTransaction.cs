@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Novolis.Economy.Primitives;
 
 namespace Novolis.Economy.Core.Transactions;
@@ -45,26 +44,3 @@ public sealed record EconomicTransaction(
             actor);
     }
 }
-
-/// <summary>Base type for small, state-changing economic effects.</summary>
- [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
- [JsonDerivedType(typeof(PositionChange), "position-change")]
- [JsonDerivedType(typeof(CreateClaim), "create-claim")]
- [JsonDerivedType(typeof(SettleClaim), "settle-claim")]
-public abstract record EconomicEffect;
-
-/// <summary>
-/// Signed quantity change for one owner, asset, and optional region.
-/// Stored positions remain non-negative; a transaction may contain a debit.
-/// </summary>
-public sealed record PositionChange(
-    EconomicEntityId Owner,
-    EconomicAssetId Asset,
-    decimal Delta,
-    RegionId? Region) : EconomicEffect;
-
-/// <summary>Create or originate an authoritative financial claim.</summary>
-public sealed record CreateClaim(FinancialClaim Claim) : EconomicEffect;
-
-/// <summary>Reduce one claim by a quantity of its own denomination.</summary>
-public sealed record SettleClaim(ClaimId ClaimId, AssetAmount Amount) : EconomicEffect;

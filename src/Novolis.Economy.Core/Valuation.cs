@@ -1,18 +1,5 @@
 namespace Novolis.Economy.Core;
 
-/// <summary>Supported valuation source for the initial Core implementation.</summary>
-public enum ValuationMethod
-{
-    /// <summary>Use the currently posted regional resource price.</summary>
-    PostedPrice = 0,
-}
-
-/// <summary>Context required to turn a position quantity into monetary value.</summary>
-public sealed record ValuationContext(
-    EconomicAssetId UnitOfAccountAsset,
-    int Period,
-    ValuationMethod Method = ValuationMethod.PostedPrice);
-
 /// <summary>Pure valuation operations over authoritative economic positions.</summary>
 public static class Valuation
 {

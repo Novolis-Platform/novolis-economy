@@ -3,9 +3,6 @@ using Novolis.Economy.Core.Holdings;
 
 namespace Novolis.Economy.Core.Invariants;
 
-/// <summary>Violation report from invariant checks.</summary>
-public sealed record InvariantViolation(string Code, string Message);
-
 /// <summary>Ownership / resource / finance / share / capacity / household rules (SPEC §19).</summary>
 public static class InvariantChecker
 {
