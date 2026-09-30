@@ -7,9 +7,3 @@ public sealed record MarketTapeInsight(
     Quantity CumulativeVolume,
     int TradeCount,
     MarketTrend Trend);
-
-/// <summary>Market book snapshot.</summary>
-public sealed record MarketBookSnapshot(
-    int ProductCount,
-    int TotalTrades,
-    IReadOnlyList<MarketTapeInsight> Products);

@@ -9,33 +9,3 @@ public readonly record struct FirmId(Guid Value)
   public static FirmId From(Core.LegalEntityId id) => new(id.Value);
   public override string ToString() => Value.ToString("N");
 }
-
-/// <summary>Ops product key. Same Guid space as Core <c>ResourceId</c>.</summary>
-public readonly record struct ProductId(Guid Value)
-{
-  public static ProductId New() => new(Guid.NewGuid());
-  public static ProductId From(Guid value) => new(value);
-  public Core.ResourceId AsCore() => Core.ResourceId.From(Value);
-  public static ProductId From(Core.ResourceId id) => new(id.Value);
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Ops area key. Same Guid space as Core <c>RegionId</c>.</summary>
-public readonly record struct GeographicAreaId(Guid Value)
-{
-  public static GeographicAreaId New() => new(Guid.NewGuid());
-  public static GeographicAreaId From(Guid value) => new(value);
-  public Primitives.RegionId AsCore() => Primitives.RegionId.From(Value);
-  public static GeographicAreaId From(Primitives.RegionId id) => new(id.Value);
-  public override string ToString() => Value.ToString("N");
-}
-
-/// <summary>Ops cohort key. Same Guid space as Core <c>CohortId</c>.</summary>
-public readonly record struct ConsumerCohortId(Guid Value)
-{
-  public static ConsumerCohortId New() => new(Guid.NewGuid());
-  public static ConsumerCohortId From(Guid value) => new(value);
-  public Core.CohortId AsCore() => Core.CohortId.From(Value);
-  public static ConsumerCohortId From(Core.CohortId id) => new(id.Value);
-  public override string ToString() => Value.ToString("N");
-}

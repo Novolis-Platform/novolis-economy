@@ -11,12 +11,3 @@ public sealed record LoanInsight(
     decimal AnnualInterestRate,
     SimulationHour OriginatedAt,
     SimulationHour DueAt);
-
-/// <summary>Aggregate inter-firm loan book.</summary>
-public sealed record LoanBookSnapshot(
-    int ActiveCount,
-    int DefaultedCount,
-    int ClosedCount,
-    Money PrincipalOutstanding,
-    Money AccruedInterestTotal,
-    IReadOnlyList<LoanInsight> Loans);

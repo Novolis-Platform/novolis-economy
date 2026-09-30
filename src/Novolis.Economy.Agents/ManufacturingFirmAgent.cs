@@ -4,27 +4,6 @@ using Novolis.Economy.Production;
 
 namespace Novolis.Economy.Agents;
 
-/// <summary>One manufactured SKU plan + sell rule.</summary>
-public sealed record ManufacturedSkuPolicy(
-  ProductId ProductId,
-  decimal BaseRate,
-  decimal StockTarget,
-  decimal MinInputOnHand,
-  ProductId? RequiredInput,
-  decimal SellAboveStock,
-  decimal SellKeepFloor,
-  decimal SellMaxQty,
-  decimal GatePrice);
-
-/// <summary>Thresholds for a multi-product plant.</summary>
-public sealed record ManufacturingFirmAgentPolicy(
-  IReadOnlyList<AgentSite> Sites,
-  ProductId PrimaryInput,
-  decimal PrimaryInputFloor,
-  decimal PrimaryInputLimitPrice,
-  IReadOnlyList<ManufacturedSkuPolicy> Outputs,
-  decimal PriceJitter = 0.04m);
-
 /// <summary>Buys primary input, runs throttled plans, sells outputs on the hub book.</summary>
 public sealed class ManufacturingFirmAgent : IEconomicAgent
 {

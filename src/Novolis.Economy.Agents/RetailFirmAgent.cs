@@ -4,30 +4,6 @@ using Novolis.Economy.Production;
 
 namespace Novolis.Economy.Agents;
 
-/// <summary>Retail SKU shelf + replenishment.</summary>
-public sealed record RetailSkuPolicy(
-  ProductId ProductId,
-  decimal BaseRetailPrice,
-  decimal StockTarget,
-  decimal DeliveredLimitPrice,
-  bool PostRetailPrice);
-
-/// <summary>Bunker / energy stock policy at a site.</summary>
-public sealed record BunkerSkuPolicy(
-  ProductId ProductId,
-  decimal MinStock,
-  decimal BuyLimitPrice,
-  decimal SellPrice,
-  bool AllowProcurement);
-
-/// <summary>Thresholds for retail + bunker sites.</summary>
-public sealed record RetailFirmAgentPolicy(
-  IReadOnlyList<AgentSite> RetailSites,
-  IReadOnlyList<AgentSite> BunkerSites,
-  IReadOnlyList<RetailSkuPolicy> RetailSkus,
-  BunkerSkuPolicy? Bunker,
-  decimal PriceJitter = 0.04m);
-
 /// <summary>Posts retail prices, buys stock, manages bunker inventory.</summary>
 public sealed class RetailFirmAgent : IEconomicAgent
 {

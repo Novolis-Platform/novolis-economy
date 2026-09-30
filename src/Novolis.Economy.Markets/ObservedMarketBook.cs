@@ -132,13 +132,3 @@ public sealed class ObservedMarketBook
       book.Estimate(ProductId.From(Guid.Empty), metric, requestArea.Value == Guid.Empty ? area : requestArea, SimulationDate.Epoch);
   }
 }
-
-/// <summary>Public read model for one product's observed tape.</summary>
-public readonly record struct MarketTapeSnapshot(
-  ProductId ProductId,
-  Money LastPrice,
-  Money PreviousPrice,
-  Quantity LastQuantity,
-  Quantity CumulativeVolume,
-  SimulationHour LastHour,
-  int TradeCount);

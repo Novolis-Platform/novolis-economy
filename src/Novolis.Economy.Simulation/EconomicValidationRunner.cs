@@ -2,43 +2,6 @@ using Novolis.Economy.Abstractions;
 
 namespace Novolis.Economy.Simulation;
 
-/// <summary>One evaluated calibration target.</summary>
-public sealed record EconomicValidationMeasurement(
-    CalibrationTarget Target,
-    decimal? ActualValue,
-    bool Passed,
-    string Explanation);
-
-/// <summary>
-/// Machine-readable validation result for one seeded model run.
-/// Internal invariants and empirical targets remain visibly distinct.
-/// </summary>
-public sealed record EconomicValidationReport(
-    EconomicModelIdentity Model,
-    string ScenarioId,
-    string ScenarioVersion,
-    ulong Seed,
-    long Ticks,
-    string SpecificationHash,
-    IReadOnlyList<EconomicValidationSignal> Invariants,
-    IReadOnlyList<EconomicValidationMeasurement> Measurements)
-{
-    /// <summary>Whether every invariant and declared target passed.</summary>
-    public bool Passed =>
-        Invariants.All(signal => signal.Passed) &&
-        Measurements.All(measurement => measurement.Passed);
-}
-
-/// <summary>Request for one seeded validation run.</summary>
-public sealed record EconomicValidationRequest(
-    IEconomicModel Model,
-    IEconomicScenario Scenario,
-    ulong Seed,
-    long Ticks,
-    CalibrationPlan Plan,
-    int PeriodLengthTicks = 24,
-    IReadOnlyDictionary<long, IReadOnlyList<IEconomicModelCommand>>? Commands = null);
-
 /// <summary>
 /// Runs calibration targets in the existing Simulation layer. It does not
 /// assert that an empirical target is true; it reports the comparison.

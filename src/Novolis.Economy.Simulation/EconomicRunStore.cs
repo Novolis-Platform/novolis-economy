@@ -3,23 +3,6 @@ using Novolis.Economy.Abstractions;
 
 namespace Novolis.Economy.Simulation;
 
-/// <summary>Stable format marker for compact run records.</summary>
-public static class EconomicRunPersistenceSchema
-{
-    /// <summary>First stable run-record schema.</summary>
-    public const string CurrentFormatVersion = "economy.run.v1";
-}
-
-/// <summary>
-/// Data-only run record. It deliberately omits the opaque model state; a
-/// resumable state belongs in an economic snapshot.
-/// </summary>
-public sealed record EconomicRunRecord(
-    string FormatVersion,
-    EconomicModelRunManifest Manifest,
-    IReadOnlyList<EconomicObservation> Observations,
-    IReadOnlyList<EconomicTransitionReceipt> Transactions);
-
 /// <summary>Canonical JSON import/export for runs and validation reports.</summary>
 public static class EconomicRunStore
 {

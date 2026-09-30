@@ -9,49 +9,6 @@ using Novolis.Economy.Primitives;
 
 namespace Novolis.Economy.Models.DeterministicBounded;
 
-/// <summary>Finite parameters for exact replay and teaching.</summary>
-public sealed record DeterministicBoundedSpecification(
-    string Version = "deterministic-bounded-2",
-    int HouseholdCount = 10,
-    decimal InitialFood = 20m,
-    decimal InitialCash = 500m,
-    decimal HouseholdCash = 100m,
-    decimal ProductionPerTick = 2m,
-    decimal DemandPerHouseholdPerTick = 1m,
-    decimal FoodPrice = 2m) : IEconomicModelSpecification;
-
-/// <summary>Fixed initial conditions for the bounded model.</summary>
-public sealed record DeterministicBoundedScenario(
-    string Id = "finite-one-region",
-    string Version = "deterministic-bounded-scenario-1") : IEconomicScenario
-{
-    public static DeterministicBoundedScenario Baseline { get; } = new();
-}
-
-/// <summary>Opaque deterministic state.</summary>
-public sealed record DeterministicBoundedState(
-    EconomicModelIdentity Model,
-    long Tick,
-    EconomyState Authority,
-    DeterministicBoundedScenario Scenario,
-    decimal Produced = 0m,
-    decimal Sold = 0m,
-    decimal UnmetDemand = 0m) : IEconomicModelState, IEconomicStateValidation
-{
-    public EconomyState CoreState => Authority;
-
-    public ulong Fingerprint => DeterministicBoundedModel.Fingerprint(this);
-
-    IReadOnlyList<EconomicValidationSignal>
-        IEconomicStateValidation.ValidateState() =>
-        InvariantChecker.Check(Authority)
-            .Select(violation => new EconomicValidationSignal(
-                violation.Code,
-                Passed: false,
-                violation.Message))
-            .ToList();
-}
-
 /// <summary>
 /// Small finite model used for exact regression and teaching. It has no
 /// stochastic actors and no external-sector source or sink.

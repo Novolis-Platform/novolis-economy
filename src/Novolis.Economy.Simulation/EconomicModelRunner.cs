@@ -5,59 +5,6 @@ using Novolis.Economy.Abstractions;
 namespace Novolis.Economy.Simulation;
 
 /// <summary>
-/// Request for a generic run of a host-neutral model. The model owns one tick;
-/// this type owns only the optional clock and run bookkeeping.
-/// </summary>
-public sealed record EconomicModelRunRequest(
-    IEconomicModel Model,
-    IEconomicScenario Scenario,
-    ulong Seed,
-    long Ticks,
-    int PeriodLengthTicks = 24,
-    IReadOnlyDictionary<long, IReadOnlyList<IEconomicModelCommand>>? Commands = null);
-
-/// <summary>Reproducibility identity for one generic model run.</summary>
-public sealed record EconomicModelRunManifest(
-    EconomicModelIdentity Model,
-    string ScenarioId,
-    string ScenarioVersion,
-    ulong Seed,
-    long Ticks,
-    int PeriodLengthTicks,
-    ulong InitialStateFingerprint,
-    ulong FinalStateFingerprint,
-    string SpecificationHash,
-    IReadOnlyList<RuleIdentity> Rules,
-    IReadOnlyList<string> ActorProfileIds,
-    long InitialTick = 0);
-
-/// <summary>Result of driving a host-neutral model through the generic runner.</summary>
-public sealed record EconomicModelRunResult(
-    IEconomicModelState State,
-    EconomicModelRunManifest Manifest,
-    IReadOnlyList<EconomicObservation> Observations,
-    IReadOnlyList<EconomicTransitionReceipt> Transactions);
-
-/// <summary>One named observation value used in run comparisons.</summary>
-public sealed record EconomicRunMetricValue(
-    string RunId,
-    ulong Seed,
-    decimal Value);
-
-/// <summary>Range summary for one observation metric across runs.</summary>
-public sealed record EconomicRunComparison(
-    string Metric,
-    IReadOnlyList<EconomicRunMetricValue> Values,
-    decimal Minimum,
-    decimal Maximum,
-    decimal Spread);
-
-/// <summary>Named model variants evaluated over one or more seeds.</summary>
-public sealed record EconomicSensitivityResult(
-    string VariantId,
-    IReadOnlyList<EconomicModelRunResult> Runs);
-
-/// <summary>
 /// Optional generic executor. Games and other hosts may drive the model
 /// directly with their own clock instead.
 /// </summary>

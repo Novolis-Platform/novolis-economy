@@ -7,9 +7,3 @@ public interface IEconomyCommand : IEconomicModelCommand
 {
   string IEconomicModelCommand.Kind => GetType().Name;
 }
-
-/// <summary>Marker for facts that occurred during simulation (diagnostics and reporting).</summary>
-public interface IEconomyEvent;
-
-/// <summary>Marker for read models answering UI or tooling queries.</summary>
-public interface IEconomyProjection;

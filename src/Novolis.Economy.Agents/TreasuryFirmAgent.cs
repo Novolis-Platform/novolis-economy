@@ -2,16 +2,6 @@ using Novolis.Economy;
 
 namespace Novolis.Economy.Agents;
 
-/// <summary>Working-capital lending thresholds for a treasury firm.</summary>
-public sealed record TreasuryFirmAgentPolicy(
-  IReadOnlyList<FirmId> EligibleBorrowers,
-  decimal CashFloorToLend,
-  decimal BorrowerCashFloor,
-  Money LoanPrincipal,
-  decimal AnnualInterestRate,
-  long TermHours,
-  int MaxActiveLoansToBorrower = 1);
-
 /// <summary>
 /// Holds a cash floor and originates small term loans to firms below a cash floor.
 /// Uses Finance <c>OriginateLoan</c> — heuristic only.
