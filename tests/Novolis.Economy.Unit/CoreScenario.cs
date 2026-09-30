@@ -11,7 +11,7 @@ using CoreEntityKind = Novolis.Economy.Core.LegalEntityKind;
 
 namespace Novolis.Economy.Unit;
 
-file static class CoreScenario
+static class CoreScenario
 {
     public static readonly RegionId RegionA = RegionId.From(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
     public static readonly RegionId RegionB = RegionId.From(Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));

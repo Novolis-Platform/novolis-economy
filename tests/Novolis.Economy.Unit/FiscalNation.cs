@@ -13,7 +13,7 @@ using CoreObligationStatus = Novolis.Economy.Core.ObligationStatus;
 
 namespace Novolis.Economy.Unit;
 
-file static class FiscalNation
+static class FiscalNation
 {
     public static readonly RegionId RegionA = RegionId.From(Guid.Parse("aa100000-0000-0000-0000-000000000001"));
     public static readonly RegionId RegionB = RegionId.From(Guid.Parse("aa100000-0000-0000-0000-000000000002"));

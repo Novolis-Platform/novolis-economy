@@ -17,7 +17,7 @@ using CoreObligationStatus = Novolis.Economy.Core.ObligationStatus;
 
 namespace Novolis.Economy.Unit;
 
-file static class ValidationScenarios
+static class ValidationScenarios
 {
     public static readonly RegionId RegionA = RegionId.From(Guid.Parse("a0000000-0000-0000-0000-000000000001"));
     public static readonly RegionId RegionB = RegionId.From(Guid.Parse("a0000000-0000-0000-0000-000000000002"));

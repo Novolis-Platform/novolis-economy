@@ -15,7 +15,7 @@ using CoreObligationStatus = Novolis.Economy.Core.ObligationStatus;
 
 namespace Novolis.Economy.Unit;
 
-file static class ExtensionFixtures
+static class ExtensionFixtures
 {
     public static readonly RegionId RegionA = RegionId.From(Guid.Parse("e1000000-0000-0000-0000-000000000001"));
     public static readonly LegalEntityId FirmId = LegalEntityId.From(Guid.Parse("e2000000-0000-0000-0000-000000000001"));
